@@ -162,7 +162,7 @@ README.md
 
 ---
 
-## M8: Chiamata programmatica + autocomplete
+## M8: Chiamata programmatica + autocomplete ✅
 
 **Goal:** Poter chiamare `crazycode <subcommand>` direttamente da terminale senza passare dal TUI. Se nessun argomento → mostra il TUI come oggi.
 
@@ -184,12 +184,12 @@ README.md
 - L'installer deve installare il file di completamento (o verificare che il source in bashrc lo attivi automaticamente — dato che il complete è dentro `crazycode.sh`, basta il source esistente)
 
 **Tasks:**
-- [ ] Aggiungere parsing argomenti all'inizio di `crazycode()`: se `$1` è un subcomando noto, eseguire direttamente senza TUI
-- [ ] Implementare `crazycode coffeeshot` come toggle non-interattivo (stampa stato dopo toggle)
-- [ ] Implementare `crazycode status` (stampa stato awake mode)
-- [ ] Implementare `crazycode --help`
-- [ ] Aggiungere funzione `_crazycode_completions` + `complete -F` alla fine di `crazycode.sh`
-- [ ] Verificare che l'autocomplete funzioni dopo `source ~/.bashrc`
+- [x] Aggiungere parsing argomenti all'inizio di `crazycode()`: se `$1` è un subcomando noto, eseguire direttamente senza TUI
+- [x] Implementare `crazycode coffeeshot` come toggle non-interattivo (stampa stato dopo toggle)
+- [x] Implementare `crazycode status` (stampa stato awake mode)
+- [x] Implementare `crazycode --help`
+- [x] Aggiungere funzione `_crazycode_completions` + `complete -F` alla fine di `crazycode.sh`
+- [x] Verificare che l'autocomplete funzioni dopo `source ~/.bashrc`
 
 ---
 

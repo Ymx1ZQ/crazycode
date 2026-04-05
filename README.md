@@ -42,6 +42,20 @@ Then reload your shell and type `crazycode`.
 
 All AI tools launch **without asking permission** — full auto-approve mode.
 
+## CLI usage
+
+Launch tools directly without the TUI:
+
+```bash
+crazycode aider          # launch aider directly
+crazycode claudecode     # launch claude code directly
+crazycode coffeeshot     # toggle awake mode on/off
+crazycode status         # show awake mode status
+crazycode --help         # show all commands
+```
+
+Tab completion is built-in — just press `Tab` after `crazycode `.
+
 ## Manual install
 
 ```bash

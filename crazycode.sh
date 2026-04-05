@@ -12,16 +12,15 @@ crazycode() {
   local items=("aider" "claudecode" "opencode" "codex")
   local cmds=("aider" "claude" "opencode" "codex")
   local descriptions=("AI pair programmer" "Anthropic" "SST" "OpenAI")
+  local launch_args=(
+    "--yes-always"
+    "--dangerously-skip-permissions"
+    ""
+    "--sandbox danger-full-access --ask-for-approval never"
+  )
   local num_items=${#items[@]}
   local selected=0
   local prev_selected=-1
-
-  # ── cleanup trap ─────────────────────────────────────────────────
-  _cleanup() {
-    echo -ne "\033[?25h"
-    stty echo 2>/dev/null
-  }
-  trap _cleanup EXIT INT TERM
 
   # ── awake mode state ──────────────────────────────────────────────
   local sleep_masked=0 caffeine_on=0 lid_ignored=0 lock_disabled=0
@@ -83,7 +82,6 @@ crazycode() {
       disown
     fi
 
-    # Disable screensaver & DPMS (X11)
     if command -v xset &>/dev/null && [ -n "$DISPLAY" ]; then
       xset s off -dpms 2>/dev/null
     fi
@@ -108,7 +106,6 @@ crazycode() {
     sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1
     pkill -f caffeine-indicator 2>/dev/null
 
-    # Re-enable screensaver & DPMS (X11)
     if command -v xset &>/dev/null && [ -n "$DISPLAY" ]; then
       xset s on +dpms 2>/dev/null
     fi
@@ -127,15 +124,7 @@ crazycode() {
     check_awake
   }
 
-  get_awake_line() {
-    if is_awake; then
-      printf "  ${BW}[c]${X} ${D}camomile${X} ${D}🌿${X}       ${BG}[awake mode on]${X}"
-    else
-      printf "  ${BW}[c]${X} ${BG}coffeeshot${X} ${BG}☕${X}     ${D}[awake mode off]${X}"
-    fi
-  }
-
-  # ── drawing ───────────────────────────────────────────────────────
+  # ── drawing helpers ──────────────────────────────────────────────
   get_color() {
     case "$1" in
       aider)      printf "%s" "$BR" ;;
@@ -145,6 +134,111 @@ crazycode() {
       *)          printf "%s" "$D" ;;
     esac
   }
+
+  get_awake_line() {
+    if is_awake; then
+      printf "  ${BW}[c]${X} ${D}camomile${X} ${D}🌿${X}       ${BG}[awake mode on]${X}"
+    else
+      printf "  ${BW}[c]${X} ${BG}coffeeshot${X} ${BG}☕${X}     ${D}[awake mode off]${X}"
+    fi
+  }
+
+  _launch_tool() {
+    local idx=$1
+    shift
+    local tool="${items[$idx]}"
+    local cmd="${cmds[$idx]}"
+    local color
+    color=$(get_color "$tool")
+
+    if ! command -v "$cmd" &>/dev/null; then
+      printf "\n  ${BR}${B}✗${X}  ${BW}${tool}${X} ${D}is not installed.${X}\n"
+      printf "  ${D}Run the installer to set it up:${X}\n"
+      printf "  ${D}  curl -fsSL https://raw.githubusercontent.com/Ymx1ZQ/crazycode/main/install.sh | bash${X}\n\n"
+      return 1
+    fi
+
+    printf "\n  ${color}${B}Launching ${tool}...${X}\n\n"
+
+    # shellcheck disable=SC2086 — args is from hardcoded array, word splitting is intentional
+    ${cmd} ${launch_args[$idx]} "$@"
+  }
+
+  _print_status() {
+    check_awake
+    local on="${BG}✓${X}" off="${BR}✗${X}"
+    printf "\n  ${BW}${B}awake mode status${X}\n"
+    printf "  ───────────────────────────\n"
+    printf "  sleep masked:    %b\n" "$( [[ $sleep_masked -eq 1 ]] && echo "$on" || echo "$off" )"
+    printf "  caffeine/dpms:   %b\n" "$( [[ $caffeine_on -eq 1 ]] && echo "$on" || echo "$off" )"
+    printf "  lid ignored:     %b\n" "$( [[ $lid_ignored -eq 1 ]] && echo "$on" || echo "$off" )"
+    printf "  lock disabled:   %b\n" "$( [[ $lock_disabled -eq 1 ]] && echo "$on" || echo "$off" )"
+    printf "  ───────────────────────────\n"
+    if is_awake; then
+      printf "  ${BG}${B}awake mode: ON${X}\n\n"
+    else
+      printf "  ${D}awake mode: OFF${X}\n\n"
+    fi
+  }
+
+  _print_help() {
+    printf "\n  ${BR}${B}⚡  CRAZYCODE${X}  ${D}— AI coding launcher${X}\n\n"
+    printf "  ${BW}Usage:${X}  crazycode [command] [args...]\n\n"
+    printf "  ${BW}Commands:${X}\n"
+    printf "    ${BR}aider${X}          Launch aider (--yes-always)\n"
+    printf "    ${BC}claudecode${X}     Launch Claude Code (--dangerously-skip-permissions)\n"
+    printf "    ${BW}opencode${X}       Launch opencode\n"
+    printf "    ${BY}codex${X}          Launch codex (--sandbox danger-full-access)\n"
+    printf "    ${BG}coffeeshot${X}     Toggle awake mode on/off\n"
+    printf "    ${D}status${X}         Show awake mode status\n\n"
+    printf "  ${D}Run without arguments to open the interactive TUI.${X}\n\n"
+  }
+
+  _find_tool_index() {
+    local name="$1" i
+    for i in "${!items[@]}"; do
+      [[ "${items[$i]}" == "$name" ]] && echo "$i" && return 0
+    done
+    return 1
+  }
+
+  # ── CLI mode: handle subcommands ─────────────────────────────────
+  if [[ $# -gt 0 ]]; then
+    local subcmd="$1"
+    shift
+    local idx
+    if idx=$(_find_tool_index "$subcmd"); then
+      _launch_tool "$idx" "$@"
+      return $?
+    fi
+    case "$subcmd" in
+      coffeeshot)
+        check_awake
+        if is_awake; then
+          disable_awake
+          printf "  ${D}🌿 camomile — awake mode OFF${X}\n"
+        else
+          enable_awake
+          printf "  ${BG}☕ coffeeshot — awake mode ON${X}\n"
+        fi
+        return 0
+        ;;
+      status) _print_status ; return 0 ;;
+      --help|-h|help) _print_help ; return 0 ;;
+      *)
+        printf "  ${BR}Unknown command:${X} %s\n" "$subcmd"
+        _print_help
+        return 1
+        ;;
+    esac
+  fi
+
+  # ── TUI mode ─────────────────────────────────────────────────────
+  _cleanup() {
+    echo -ne "\033[?25h"
+    stty echo 2>/dev/null
+  }
+  trap _cleanup EXIT INT TERM
 
   # Row layout:
   #   1  (blank)
@@ -186,7 +280,6 @@ crazycode() {
     get_awake_line
   }
 
-  # ── init ──────────────────────────────────────────────────────────
   check_awake
 
   clear
@@ -229,7 +322,6 @@ crazycode() {
         break
         ;;
       c)
-        # Position cursor below menu for sudo prompt
         local prompt_row=$((9 + num_items))
         echo -ne "\033[${prompt_row};1H\033[K"
         sudo -v
@@ -249,28 +341,16 @@ crazycode() {
   done
 
   clear
-
-  local tool="${items[$selected]}"
-  local cmd="${cmds[$selected]}"
-  local color
-  color=$(get_color "$tool")
-
-  if ! command -v "$cmd" &>/dev/null; then
-    printf "\n  ${BR}${B}✗${X}  ${BW}${tool}${X} ${D}is not installed.${X}\n"
-    printf "  ${D}Run the installer to set it up:${X}\n"
-    printf "  ${D}  curl -fsSL https://raw.githubusercontent.com/Ymx1ZQ/crazycode/main/install.sh | bash${X}\n\n"
-    return 1
-  fi
-
-  printf "\n  ${color}${B}Launching ${tool}...${X}\n\n"
-
-  case "$tool" in
-    aider)      aider --yes-always "$@" ;;
-    claudecode) claude --dangerously-skip-permissions "$@" ;;
-    opencode)   opencode "$@" ;;
-    codex)      codex --sandbox danger-full-access --ask-for-approval never "$@" ;;
-  esac
+  _launch_tool "$selected" "$@"
 }
+
+# ── bash completion ──────────────────────────────────────────────────
+_crazycode_completions() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  COMPREPLY=( $(compgen -W "aider claudecode opencode codex coffeeshot status --help" -- "$cur") )
+}
+# NOTE: completion words match items array + extra commands; update if items change
+complete -F _crazycode_completions crazycode
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   crazycode "$@"
