@@ -18,8 +18,8 @@ _ask() {
   local label="$1" desc="$2"
   echo -e "\n  ${W}${label}${X}  ${D}${desc}${X}"
   local ans
-  read -rp "  Install? [y/N] " ans
-  [[ "$ans" =~ ^[Yy]$ ]]
+  read -rp "  Install? [Y/n] " ans
+  [[ ! "$ans" =~ ^[Nn]$ ]]
 }
 
 _ensure_pipx() {
@@ -70,7 +70,7 @@ CRAZYCODE_DIR="$HOME/.crazycode"
 if [ -d "$CRAZYCODE_DIR/.git" ]; then
   _info "~/.crazycode already exists — updating..."
   git -C "$CRAZYCODE_DIR" fetch --quiet
-  git -C "$CRAZYCODE_DIR" reset --hard "@{u}" --quiet
+  git -C "$CRAZYCODE_DIR" reset --hard "@{u}" >/dev/null 2>&1
 else
   _info "Cloning crazycode into ~/.crazycode..."
   git clone https://github.com/Ymx1ZQ/crazycode.git "$CRAZYCODE_DIR"
@@ -90,7 +90,7 @@ fi
 # ─── phase 2: optional tools ──────────────────────────────────────────────────
 
 _section "Optional tools"
-echo -e "  ${D}Answer y/N for each tool you want to install.${X}"
+echo -e "  ${D}All tools install by default — press n to skip any.${X}"
 
 if _ask "caffeine" "keeps the screen on — prevents display sleep (apt)"; then
   sudo apt install -y caffeine

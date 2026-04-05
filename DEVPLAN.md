@@ -61,3 +61,101 @@ README.md
 - [x] Scrivere `README.md` con tutte le sezioni
 - [x] Includere il quickinstall one-liner (presuppone `install.sh` su main)
 - [x] Aggiungere demo ASCII del menu crazycode
+
+---
+
+## M3: Fix awake mode — `systemctl restart systemd-logind` kills the session ✅
+
+**Problema:** Premere `c` per attivare/disattivare awake mode chiama `sudo systemctl restart systemd-logind` (righe 87 e 105 di `crazycode.sh`). Questo **termina tutte le sessioni utente** — il desktop crasha, l'utente viene buttato fuori.
+
+**Obiettivo:** L'awake mode deve tenere il PC sempre attivo per l'utente — niente schermata di login, niente standby, niente lock dello schermo. Il toggle deve funzionare senza distruggere la sessione.
+
+**Fix:**
+- Sostituire `systemctl restart systemd-logind` con `sudo systemctl kill -s HUP systemd-logind` che ricarica la config senza killare le sessioni (sia in `enable_awake` che in `disable_awake`)
+- Verificare che il segnale HUP sia sufficiente per applicare le modifiche a `logind.conf`
+
+**Tasks:**
+- [x] Sostituire `restart` con `kill -s HUP` in `enable_awake`
+- [x] Sostituire `restart` con `kill -s HUP` in `disable_awake`
+- [x] Testare che il toggle coffeeshot/camomile non uccida la sessione
+
+---
+
+## M4: Fix posizione prompt sudo nel TUI ✅
+
+**Problema:** Quando `enable_awake`/`disable_awake` chiede la password sudo, il prompt appare nella posizione corrente del cursore (in fondo al terminale), non vicino alla riga coffeeshot/camomile. L'utente non capisce cosa sta succedendo.
+
+**Fix:**
+- Pre-autenticare sudo prima dei comandi awake: posizionare il cursore sulla riga giusta (sotto coffeeshot/camomile) e fare un `sudo -v` lì, così il prompt della password appare nel posto giusto
+- Dopo l'autenticazione, procedere con i comandi sudo (che useranno il token sudo già attivo)
+
+**Tasks:**
+- [x] Aggiungere `sudo -v` con cursore posizionato sotto la riga awake prima di chiamare `enable_awake`/`disable_awake`
+- [x] Ripulire eventuali artefatti visivi dopo l'inserimento password
+- [x] Ridisegnare il menu dopo il toggle
+
+---
+
+## M5: Riga "all tools launch without asking permission" ✅
+
+**Problema:** L'utente non vede che tutti i tool vengono lanciati senza chiedere permessi (es. `--dangerously-skip-permissions`, `--yes-always`, `--sandbox danger-full-access`).
+
+**Fix:**
+- Aggiungere una riga informativa in fondo al menu, sotto la riga di help, es:
+  `⚠ all tools launch without asking permission`
+
+**Tasks:**
+- [x] Aggiungere la riga sotto l'help nel draw del menu
+- [x] Assicurarsi che non rompa il posizionamento delle altre righe (aggiornare offset righe)
+
+---
+
+## M6: Installer — default "installa tutto", opt-out ✅
+
+**Problema:** Attualmente `install.sh` chiede `[y/N]` per ogni tool (opt-in). L'utente vuole il contrario: di default installa tutto, l'utente dice `n` solo se non vuole qualcosa.
+
+**Fix:**
+- Cambiare il prompt da `[y/N]` a `[Y/n]`
+- Invertire la logica: se l'utente preme invio senza scrivere nulla, il tool viene installato
+
+**Tasks:**
+- [x] Modificare `_ask()` in `install.sh`: default a `Y`, accettare `n/N` come skip
+- [x] Aggiornare il testo del prompt (`Install? [Y/n]`)
+- [x] Aggiornare il messaggio introduttivo della fase 2
+
+---
+
+## M7: Ottimizzazioni varie ✅
+
+### M7a: Verifica tool installato prima di lanciare
+
+**Problema:** Quando l'utente preme enter su un tool (es. `aider`), lo script lo lancia direttamente. Se il tool non è installato, l'utente vede un errore bash criptico.
+
+**Fix:** Aggiungere `command -v` check prima del lancio; se manca, mostrare messaggio chiaro con istruzioni di installazione.
+
+### M7b: Trap per cleanup terminale
+
+**Problema:** Se l'utente fa Ctrl+C durante il menu, il terminale potrebbe rimanere in stato sporco (cursore nascosto, echo disabilitato, ecc.).
+
+**Fix:** Aggiungere `trap` per ripristinare il terminale su EXIT/INT/TERM.
+
+### M7c: Evitare sudo ridondanti
+
+**Problema:** `enable_awake` chiama `sudo` per ogni comando. Se il token sudo è scaduto, chiede la password più volte.
+
+**Fix:** Fare un singolo `sudo -v` all'inizio e poi usare il token per tutti i comandi.
+
+### M7d: Caffeine activation — approccio più robusto
+
+**Problema:** Il blocco gdbus (righe 71-82) per attivare caffeine usa il bus KDE (`org.kde.StatusNotifierWatcher`) ed è fragile. Potrebbe non funzionare su GNOME o altri DE.
+
+**Fix:** Considerare alternative più semplici/portabili:
+- `xdg-screensaver reset` in un loop
+- `xset s off -dpms` come fallback
+- Controllare se caffeine ha un CLI per l'attivazione (`caffeine-indicator --activate` o simile)
+
+**Tasks:**
+- [x] M7a: Check `command -v` prima di lanciare ogni tool
+- [x] M7b: Aggiungere trap per cleanup terminale su EXIT/INT/TERM
+- [x] M7c: Singolo `sudo -v` prima dei comandi awake
+- [x] M7d: Sostituito gdbus KDE con `xset s off -dpms` (cross-DE) + caffeine-indicator come indicatore visivo

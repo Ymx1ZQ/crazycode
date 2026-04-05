@@ -1,19 +1,19 @@
 # ⚡ crazycode
 
-A terminal launcher for AI coding tools — with screen-awake and sleep-block toggles baked in.
+A terminal launcher for AI coding tools — with a full awake-mode toggle that keeps your PC alive.
 
 ```
-  ⚡ CRAZYCODE
-  ────────────────────────────────
-  [a] aider          (aider-ai)
-  [c] claudecode     (anthropic)
-  [o] opencode       (sst)
-  [x] codex          (openai)
-  ────────────────────────────────
-  [s] coffeeshot     (screen awake)   [off]
-  [l] nosleep        (block suspend)  [off]
-  ────────────────────────────────
-  [q] quit
+  ⚡  CRAZYCODE
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    aider           AI pair programmer
+    claudecode      Anthropic
+    opencode        SST
+    codex           OpenAI
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  [c] coffeeshot ☕     [awake mode off]
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ↑↓ navigate  ·  enter launch  ·  c toggle  ·  q quit
+  ⚠  all tools launch without asking permission
 ```
 
 ## Quick install
@@ -25,22 +25,22 @@ curl -fsSL https://raw.githubusercontent.com/Ymx1ZQ/crazycode/main/install.sh | 
 This will:
 1. Clone the repo into `~/.crazycode/`
 2. Add `source ~/.crazycode/crazycode.sh` to your `~/.bashrc`
-3. Ask one-by-one if you want to install each optional tool
+3. Install all optional tools by default (press `n` to skip any)
 
 Then reload your shell and type `crazycode`.
 
 ## What each option does
 
-| Key | Name | What it does |
-|-----|------|-------------|
-| `a` | aider | Opens [aider](https://aider.chat) — AI pair programmer in the terminal |
-| `c` | claudecode | Opens [Claude Code](https://claude.ai/code) — Anthropic's official AI CLI |
-| `o` | opencode | Opens [opencode](https://github.com/sst/opencode) — AI coding tool by SST |
-| `x` | codex | Opens [Codex](https://github.com/openai/codex) — OpenAI's AI coding CLI |
-| `s` | **coffeeshot** | Launches `caffeine-indicator` to keep the screen on — prevents display sleep |
-| `l` | **nosleep** | Masks `sleep/suspend/hibernate` systemd targets — prevents the PC from suspending |
+| Option | What it does |
+|--------|-------------|
+| **aider** | Opens [aider](https://aider.chat) — AI pair programmer in the terminal (`--yes-always`) |
+| **claudecode** | Opens [Claude Code](https://claude.ai/code) — Anthropic's official AI CLI (`--dangerously-skip-permissions`) |
+| **opencode** | Opens [opencode](https://github.com/sst/opencode) — AI coding tool by SST |
+| **codex** | Opens [Codex](https://github.com/openai/codex) — OpenAI's AI coding CLI (`--sandbox danger-full-access`) |
+| **coffeeshot** `[c]` | Awake mode — keeps the PC fully alive: masks sleep/suspend/hibernate, disables DPMS & screensaver, ignores lid switch, disables screen lock |
+| **camomile** `[c]` | Restores normal power management (toggle coffeeshot off) |
 
-`coffeeshot` and `nosleep` are toggles: press the key again to turn them off.
+All AI tools launch **without asking permission** — full auto-approve mode.
 
 ## Manual install
 
@@ -53,6 +53,6 @@ source ~/.bashrc
 ## Requirements
 
 - bash 4+
-- Linux (systemd) — `nosleep` requires `sudo` for `systemctl mask/unmask`
-- `caffeine` package — for `coffeeshot` (the installer can install it for you)
+- Linux (systemd) — awake mode requires `sudo` for `systemctl mask/unmask` and `logind.conf`
+- `caffeine` package — for screen-awake indicator (the installer can install it for you)
 - The AI tools themselves — each needs its own install (the installer walks you through them)
