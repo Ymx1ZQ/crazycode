@@ -159,3 +159,95 @@ README.md
 - [x] M7b: Aggiungere trap per cleanup terminale su EXIT/INT/TERM
 - [x] M7c: Singolo `sudo -v` prima dei comandi awake
 - [x] M7d: Sostituito gdbus KDE con `xset s off -dpms` (cross-DE) + caffeine-indicator come indicatore visivo
+
+---
+
+## M8: Chiamata programmatica + autocomplete
+
+**Goal:** Poter chiamare `crazycode <subcommand>` direttamente da terminale senza passare dal TUI. Se nessun argomento → mostra il TUI come oggi.
+
+**Subcomandi:**
+- `crazycode aider` → lancia aider direttamente
+- `crazycode claudecode` → lancia claude code direttamente
+- `crazycode opencode` → lancia opencode direttamente
+- `crazycode codex` → lancia codex direttamente
+- `crazycode coffeeshot` → attiva awake mode (toggle on/off)
+- `crazycode status` → mostra stato awake mode senza TUI
+- `crazycode --help` → mostra usage con lista comandi
+
+**Autocomplete bash:**
+- Funzione `_crazycode_completions` registrata con `complete -F`
+- Completa i subcomandi: `aider claudecode opencode codex coffeeshot status --help`
+- La registrazione va nel file sorgato (`crazycode.sh`) così è attiva appena caricato
+
+**Installer:**
+- L'installer deve installare il file di completamento (o verificare che il source in bashrc lo attivi automaticamente — dato che il complete è dentro `crazycode.sh`, basta il source esistente)
+
+**Tasks:**
+- [ ] Aggiungere parsing argomenti all'inizio di `crazycode()`: se `$1` è un subcomando noto, eseguire direttamente senza TUI
+- [ ] Implementare `crazycode coffeeshot` come toggle non-interattivo (stampa stato dopo toggle)
+- [ ] Implementare `crazycode status` (stampa stato awake mode)
+- [ ] Implementare `crazycode --help`
+- [ ] Aggiungere funzione `_crazycode_completions` + `complete -F` alla fine di `crazycode.sh`
+- [ ] Verificare che l'autocomplete funzioni dopo `source ~/.bashrc`
+
+---
+
+## M9: Miglioramenti grafici / UX del TUI
+
+### M9a: Indicatore tool installati
+
+**Problema:** L'utente non sa quali tool sono installati fino a quando non li seleziona e preme enter.
+
+**Fix:** Mostrare un indicatore accanto a ogni tool nel menu: `✓` se installato, `✗` se mancante (in dim). Usare l'array `cmds` per il check con `command -v`.
+
+### M9b: Navigazione con shortcut diretti
+
+**Problema:** Attualmente si può solo navigare con frecce + enter. Sarebbe comodo premere un tasto per andare direttamente al tool.
+
+**Fix:** Aggiungere shortcut numerici `1-4` per selezionare e lanciare direttamente il tool corrispondente.
+
+### M9c: Stato dettagliato awake mode
+
+**Problema:** Il menu mostra solo "awake mode on/off" ma non quali componenti sono attivi.
+
+**Fix:** Quando awake è parziale (alcuni check passano, altri no), mostrare un indicatore intermedio tipo `[partial]` in giallo, oppure mostrare i singoli stati su hover/espansione.
+
+### M9d: Ridisegno completo su resize terminale
+
+**Problema:** Se l'utente ridimensiona il terminale durante il menu, il layout si rompe.
+
+**Fix:** Aggiungere trap su `WINCH` che ridisegna tutto il menu.
+
+**Tasks:**
+- [ ] M9a: Aggiungere ✓/✗ accanto a ogni tool nel menu
+- [ ] M9b: Aggiungere shortcut numerici 1-4 per lancio diretto
+- [ ] M9c: Mostrare stato parziale awake in giallo
+- [ ] M9d: Trap WINCH per ridisegno su resize
+
+---
+
+## M10: Miglioramenti installer
+
+### M10a: Verifica post-install
+
+**Problema:** L'installer non verifica se l'installazione di ogni tool è andata a buon fine. Se un `npm i -g` fallisce silenziosamente, l'utente non lo sa.
+
+**Fix:** Dopo ogni installazione, fare `command -v <tool>` e mostrare ✓ o ✗ con messaggio chiaro. A fine installer, stampare una tabella riassuntiva.
+
+### M10b: Flag `--all` / `--silent`
+
+**Problema:** Per automazione (CI, dotfiles bootstrap), serve un modo per installare tutto senza prompt.
+
+**Fix:** Aggiungere `--all` (installa tutto senza chiedere) e `--silent` (nessun output interattivo, solo errori).
+
+### M10c: Supporto zsh
+
+**Problema:** L'installer modifica solo `~/.bashrc`. Utenti zsh devono farlo manualmente.
+
+**Fix:** Rilevare la shell dell'utente (`$SHELL`) e aggiungere il source al file rc corretto (`~/.bashrc` o `~/.zshrc`).
+
+**Tasks:**
+- [ ] M10a: Aggiungere verifica post-install per ogni tool + tabella riassuntiva
+- [ ] M10b: Aggiungere flag `--all` e `--silent`
+- [ ] M10c: Rilevare shell e supportare zsh
