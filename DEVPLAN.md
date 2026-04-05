@@ -1,6 +1,6 @@
 # crazycode — Dev Plan
 
-## M1: Installer script
+## M1: Installer script ✅
 
 **Goal:** A single `install.sh` that:
 1. Installs crazycode itself (clona il repo in `~/.crazycode/`, aggiunge il source a `~/.bashrc`)
@@ -29,15 +29,15 @@ install.sh
 - `git` — se assente, blocca e avvisa
 
 **Tasks:**
-- [ ] Scrivere `install.sh` con fase 1 (self-install di crazycode)
-- [ ] Aggiungere prompt interattivo per ogni tool opzionale
-- [ ] Rilevare prerequisiti (git, pipx, npm) e stampare avvisi chiari
-- [ ] Rendere lo script idempotente (rieseguibile senza danni)
-- [ ] Testare su shell pulita
+- [x] Scrivere `install.sh` con fase 1 (self-install di crazycode)
+- [x] Aggiungere prompt interattivo per ogni tool opzionale
+- [x] Rilevare prerequisiti (git, pipx, npm) e stampare avvisi chiari
+- [x] Rendere lo script idempotente (rieseguibile senza danni)
+- [x] Testare su shell pulita (bash -n syntax check)
 
 ---
 
-## M2: README
+## M2: README ✅
 
 **Goal:** `README.md` che spiega cos'è crazycode, cosa fa ogni opzione del menu, e come installarlo con un solo comando.
 
@@ -58,6 +58,6 @@ README.md
 ```
 
 **Tasks:**
-- [ ] Scrivere `README.md` con tutte le sezioni
-- [ ] Includere il quickinstall one-liner (presuppone `install.sh` su main)
-- [ ] Aggiungere demo ASCII del menu crazycode
+- [x] Scrivere `README.md` con tutte le sezioni
+- [x] Includere il quickinstall one-liner (presuppone `install.sh` su main)
+- [x] Aggiungere demo ASCII del menu crazycode
