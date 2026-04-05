@@ -135,9 +135,22 @@ crazycode() {
     esac
   }
 
+  awake_count() {
+    local count=0
+    [[ $sleep_masked -eq 1 ]] && ((count++))
+    [[ $caffeine_on -eq 1 ]] && ((count++))
+    [[ $lid_ignored -eq 1 ]] && ((count++))
+    [[ $lock_disabled -eq 1 ]] && ((count++))
+    echo "$count"
+  }
+
   get_awake_line() {
-    if is_awake; then
+    local count
+    count=$(awake_count)
+    if [[ $count -eq 4 ]]; then
       printf "  ${BW}[c]${X} ${D}camomile${X} ${D}🌿${X}       ${BG}[awake mode on]${X}"
+    elif [[ $count -gt 0 ]]; then
+      printf "  ${BW}[c]${X} ${BG}coffeeshot${X} ${BG}☕${X}     ${BY}[partial ${count}/4]${X}"
     else
       printf "  ${BW}[c]${X} ${BG}coffeeshot${X} ${BG}☕${X}     ${D}[awake mode off]${X}"
     fi
@@ -255,15 +268,23 @@ crazycode() {
   draw_line() {
     local idx=$1 is_selected=$2
     local item="${items[$idx]}"
+    local cmd="${cmds[$idx]}"
     local color
     color=$(get_color "$item")
+    local installed_mark
+    if command -v "$cmd" &>/dev/null; then
+      installed_mark="${BG}✓${X}"
+    else
+      installed_mark="${BR}✗${X}"
+    fi
 
+    local num=$((idx + 1))
     local row=$((4 + idx))
     echo -ne "\033[${row};1H\033[K"
     if [ "$is_selected" -eq 1 ]; then
-      printf "  ${BW}${B}▶${X} ${B}${color}%-15s${X} ${D}%s${X}" "$item" "${descriptions[$idx]}"
+      printf "  ${BW}${B}▶${X} ${B}${color}%-15s${X} ${D}%s${X}  %b" "$item" "${descriptions[$idx]}" "$installed_mark"
     else
-      printf "    ${color}%-15s${X} ${D}%s${X}" "$item" "${descriptions[$idx]}"
+      printf "  ${D}${num}${X} ${color}%-15s${X} ${D}%s${X}  %b" "$item" "${descriptions[$idx]}" "$installed_mark"
     fi
   }
 
@@ -280,20 +301,24 @@ crazycode() {
     get_awake_line
   }
 
-  check_awake
+  draw_all() {
+    clear
+    printf "\n"
+    printf "  ${BR}${B}⚡  CRAZYCODE${X}\n"
+    printf "  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
+    draw_menu
+    printf "\033[$((4 + num_items));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
+    draw_awake
+    printf "\033[$((6 + num_items));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
+    printf "\033[$((7 + num_items));1H  ${D}↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  q quit${X}\n"
+    printf "\033[$((8 + num_items));1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}\n"
+    echo -ne "\033[$((9 + num_items));1H"
+    draw_line "$selected" 1
+  }
 
-  clear
-  printf "\n"
-  printf "  ${BR}${B}⚡  CRAZYCODE${X}\n"
-  printf "  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
-  draw_menu
-  printf "\033[$((4 + num_items));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
-  draw_awake
-  printf "\033[$((6 + num_items));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
-  printf "\033[$((7 + num_items));1H  ${D}↑↓ navigate  ·  enter launch  ·  c toggle  ·  q quit${X}\n"
-  printf "\033[$((8 + num_items));1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}\n"
-  echo -ne "\033[$((9 + num_items));1H"
-  draw_line "$selected" 1
+  check_awake
+  draw_all
+  trap 'draw_all' WINCH
 
   # ── input loop ────────────────────────────────────────────────────
   while true; do
@@ -333,6 +358,13 @@ crazycode() {
         fi
         draw_awake
         echo -ne "\033[${prompt_row};1H"
+        ;;
+      [1-4])
+        local num_idx=$((key - 1))
+        if [[ $num_idx -lt $num_items ]]; then
+          selected=$num_idx
+          break
+        fi
         ;;
       q)
         break

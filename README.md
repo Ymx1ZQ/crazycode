@@ -5,14 +5,14 @@ A terminal launcher for AI coding tools — with a full awake-mode toggle that k
 ```
   ⚡  CRAZYCODE
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    aider           AI pair programmer
-    claudecode      Anthropic
-    opencode        SST
-    codex           OpenAI
+  ▶ aider           AI pair programmer  ✓
+  2 claudecode      Anthropic           ✓
+  3 opencode        SST                 ✗
+  4 codex           OpenAI              ✓
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [c] coffeeshot ☕     [awake mode off]
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ↑↓ navigate  ·  enter launch  ·  c toggle  ·  q quit
+  ↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  q quit
   ⚠  all tools launch without asking permission
 ```
 

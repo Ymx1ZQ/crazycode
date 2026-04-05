@@ -193,7 +193,7 @@ README.md
 
 ---
 
-## M9: Miglioramenti grafici / UX del TUI
+## M9: Miglioramenti grafici / UX del TUI ✅
 
 ### M9a: Indicatore tool installati
 
@@ -220,10 +220,10 @@ README.md
 **Fix:** Aggiungere trap su `WINCH` che ridisegna tutto il menu.
 
 **Tasks:**
-- [ ] M9a: Aggiungere ✓/✗ accanto a ogni tool nel menu
-- [ ] M9b: Aggiungere shortcut numerici 1-4 per lancio diretto
-- [ ] M9c: Mostrare stato parziale awake in giallo
-- [ ] M9d: Trap WINCH per ridisegno su resize
+- [x] M9a: Aggiungere ✓/✗ accanto a ogni tool nel menu
+- [x] M9b: Aggiungere shortcut numerici 1-4 per lancio diretto
+- [x] M9c: Mostrare stato parziale awake in giallo `[partial X/4]`
+- [x] M9d: Trap WINCH per ridisegno su resize via `draw_all`
 
 ---
 
