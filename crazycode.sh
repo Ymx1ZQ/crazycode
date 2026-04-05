@@ -367,7 +367,8 @@ crazycode() {
         fi
         ;;
       q)
-        break
+        clear
+        return 0
         ;;
     esac
   done
