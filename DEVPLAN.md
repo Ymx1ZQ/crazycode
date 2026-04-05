@@ -227,7 +227,7 @@ README.md
 
 ---
 
-## M10: Miglioramenti installer
+## M10: Miglioramenti installer ✅
 
 ### M10a: Verifica post-install
 
@@ -248,6 +248,6 @@ README.md
 **Fix:** Rilevare la shell dell'utente (`$SHELL`) e aggiungere il source al file rc corretto (`~/.bashrc` o `~/.zshrc`).
 
 **Tasks:**
-- [ ] M10a: Aggiungere verifica post-install per ogni tool + tabella riassuntiva
-- [ ] M10b: Aggiungere flag `--all` e `--silent`
-- [ ] M10c: Rilevare shell e supportare zsh
+- [x] M10a: Aggiungere verifica post-install per ogni tool + tabella riassuntiva
+- [x] M10b: Aggiungere flag `--all` e `--silent`
+- [x] M10c: Rilevare shell e supportare zsh

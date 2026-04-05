@@ -24,10 +24,13 @@ curl -fsSL https://raw.githubusercontent.com/Ymx1ZQ/crazycode/main/install.sh | 
 
 This will:
 1. Clone the repo into `~/.crazycode/`
-2. Add `source ~/.crazycode/crazycode.sh` to your `~/.bashrc`
+2. Add `source ~/.crazycode/crazycode.sh` to your shell rc (`~/.bashrc` or `~/.zshrc`)
 3. Install all optional tools by default (press `n` to skip any)
+4. Show a summary of what was installed
 
 Then reload your shell and type `crazycode`.
+
+Flags: `--all` (install everything, no prompts), `--silent` (errors only).
 
 ## What each option does
 
