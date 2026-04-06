@@ -8,7 +8,7 @@ set -euo pipefail
 
 R='\033[0;31m' Y='\033[0;33m' C='\033[0;36m' W='\033[1;37m' D='\033[2;37m' G='\033[0;32m' X='\033[0m'
 
-ALL=0 SILENT=0
+ALL=0 SILENT=0 SKIP_ALL=0
 for arg in "$@"; do
   case "$arg" in
     --all)    ALL=1 ;;
@@ -26,11 +26,17 @@ _has() { command -v "$1" >/dev/null 2>&1; }
 
 _ask() {
   [[ $ALL -eq 1 ]] && return 0
+  [[ $SKIP_ALL -eq 1 ]] && return 1
   local label="$1" desc="$2"
   echo -e "\n  ${W}${label}${X}  ${D}${desc}${X}"
   local ans
-  read -rp "  Install? [Y/n] " ans
-  [[ ! "$ans" =~ ^[Nn]$ ]]
+  read -rp "  Install? [Y/n/a/s] " ans
+  case "$ans" in
+    a|A) ALL=1;      return 0 ;;
+    s|S) SKIP_ALL=1; return 1 ;;
+    n|N) return 1 ;;
+    *)   return 0 ;;
+  esac
 }
 
 # Track install results for summary
@@ -128,7 +134,7 @@ fi
 
 _section "Optional tools"
 if [[ $ALL -eq 0 && $SILENT -eq 0 ]]; then
-  echo -e "  ${D}All tools install by default — press n to skip any.${X}"
+  echo -e "  ${D}Y install  ·  n skip  ·  a install all  ·  s skip all${X}"
 fi
 
 if _ask "caffeine" "keeps the screen on — prevents display sleep (apt)"; then

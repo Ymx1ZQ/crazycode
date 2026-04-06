@@ -355,7 +355,7 @@ README.md
 
 ---
 
-## M15: Installer — shortcut "a" (install all) e "s" (skip all) per le dipendenze
+## M15: Installer — shortcut "a" (install all) e "s" (skip all) per le dipendenze ✅
 
 ### M15a: Scorciatoie interattive
 
@@ -364,5 +364,5 @@ README.md
 **Fix:** Aggiungere alla funzione `_ask()` il supporto per le risposte `a` (all — installa questa e tutte le successive) e `s` (skip all — salta questa e tutte le successive). Quando l'utente risponde `a`, impostare `ALL=1` così i prompt successivi vengono auto-accettati. Quando risponde `s`, impostare un flag `SKIP_ALL=1` che fa ritornare 1 per tutti i prompt successivi. Aggiornare il prompt da `[Y/n]` a `[Y/n/a/s]`.
 
 **Tasks:**
-- [ ] M15a: Aggiungere flag SKIP_ALL e logica a/s nella funzione `_ask()`
-- [ ] M15b: Aggiornare il prompt e il messaggio iniziale per mostrare le nuove opzioni
+- [x] M15a: Aggiungere flag SKIP_ALL e logica a/s nella funzione `_ask()`
+- [x] M15b: Aggiornare il prompt e il messaggio iniziale per mostrare le nuove opzioni
