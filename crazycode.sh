@@ -324,13 +324,13 @@ _crazycode_main() {
     printf "\033[$((hdr + num_items + 1));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
     draw_awake
     printf "\033[$((hdr + num_items + 3));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
-    local help_line="↑↓/1-4 select  ·  enter launch  ·  c toggle"
-    [[ $_last_tool -ge 0 ]] && help_line+="  ·  r resume"
-    help_line+="  ·  q quit"
-    printf "\033[$((hdr + num_items + 4));1H  ${D}${help_line}${X}\n"
+    local help_line="${B}↑↓/1-4${X}${D} select  ·  ${X}${B}enter${X}${D} launch  ·  ${X}${B}c${X}${D} toggle awake mode"
+    [[ $_last_tool -ge 0 ]] && help_line+="  ·  ${X}${B}r${X}${D} resume last session"
+    help_line+="  ·  ${X}${B}q${X}${D} quit${X}"
+    printf "\033[$((hdr + num_items + 4));1H  ${D}${help_line}\n"
     local footer_row=$((hdr + num_items + 5))
     if [[ -n "$_last_session" ]]; then
-      printf "\033[${footer_row};1H  ${D}⏱  last session: ${items[$_last_tool]} · ${_last_session}${X}\n"
+      printf "\033[${footer_row};1H  ${D}⏱  last session: ${items[$_last_tool]} · ${_last_session} — press ${X}${B}r${X}${D} to resume${X}\n"
       ((footer_row++))
     fi
     printf "\033[${footer_row};1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}\n"

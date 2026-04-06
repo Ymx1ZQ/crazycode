@@ -393,3 +393,20 @@ README.md
 - [x] M16b: Modificare `_launch_tool` per supportare modalità resume
 - [x] M16c: Aggiungere tasto R nel loop input + aggiornare help line
 - [x] M16d: Mostrare nome tool nella riga timer
+
+---
+
+## M17: UX — help line più chiara + lettere bold ✅
+
+**Problema:** La riga di help `↑↓/1-4 select · enter launch · c toggle · r resume · q quit` non è abbastanza chiara. "toggle" non dice cosa toggli, "resume" non dice cosa riprendi. Inoltre le lettere shortcut non si distinguono dal testo descrittivo.
+
+**Fix:**
+1. **Label più descrittive:**
+   - `c toggle` → `c toggle awake mode`
+   - `r resume` → `r resume last session`
+2. **Lettere shortcut in grassetto** (ANSI `\033[1m`): tutte le lettere/tasti nella help line (`↑↓/1-4`, `enter`, `c`, `r`, `q`) vengono wrappate con `${B}...${X}${D}` per risaltare in bold rispetto al testo dim circostante
+3. **Timer line — hint per resume:** aggiungere `— press r to resume` alla fine della riga `⏱  last session: ...`, con la `r` in bold
+
+**Tasks:**
+- [x] M17a: Aggiornare help line con label descrittive e lettere bold
+- [x] M17b: Aggiungere hint "press r to resume" alla riga timer con r bold
