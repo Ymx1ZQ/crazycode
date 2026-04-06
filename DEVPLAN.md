@@ -251,3 +251,64 @@ README.md
 - [x] M10a: Aggiungere verifica post-install per ogni tool + tabella riassuntiva
 - [x] M10b: Aggiungere flag `--all` e `--silent`
 - [x] M10c: Rilevare shell e supportare zsh
+
+---
+
+## M11: UX — ritorno al menu, directory, robustezza terminale ✅
+
+### M11a: Loop ritorno al menu dopo uscita assistant
+
+**Problema:** Quando si esce da un assistant (con `/exit` o Ctrl+C), crazycode termina e l'utente torna alla shell. Deve invece tornare al menu TUI.
+
+**Fix:** Wrappare il blocco lancio (linee 376-377) in un `while true` loop. Dopo che `_launch_tool` ritorna, ridisegnare il menu. Il tasto `q` nel menu resta l'unico modo per uscire davvero.
+
+### M11b: Mostrare directory corrente nel menu
+
+**Problema:** Il menu non indica in quale cartella si sta lavorando. L'utente non sa su quale progetto sta per lanciare un tool.
+
+**Fix:** Aggiungere la pwd nella testata del menu. Mostrare il nome del progetto (basename) in evidenza e il path completo in dim sotto. Aggiornare il layout delle righe di conseguenza.
+
+### M11c: `stty sane` dopo ogni assistant
+
+**Problema:** Se un assistant crasha o lascia il terminale in stato sporco (echo off, raw mode), il menu si rompe al ritorno.
+
+**Fix:** Eseguire `stty sane 2>/dev/null` dopo il ritorno da `_launch_tool`, prima di ridisegnare il menu.
+
+### M11d: Pausa su errore tool non installato
+
+**Problema:** Con il loop del M11a, se un tool non è installato il messaggio di errore verrebbe cancellato dal ridisegno immediato del menu.
+
+**Fix:** Aggiungere `read -rsn1 -p "  press any key..."` dopo il messaggio di errore in `_launch_tool`, così l'utente ha tempo di leggerlo.
+
+### M11e: Mantenere selezione sull'ultimo tool usato
+
+**Problema:** Quando si torna al menu dopo un assistant, il cursore torna al primo elemento. Dovrebbe restare sul tool appena usato, così si può rilanciare con un enter.
+
+**Fix:** Non resettare `selected` nel loop. La variabile mantiene già il valore corretto, basta non toccarla prima del ridisegno.
+
+**Tasks:**
+- [x] M11a: Wrappare lancio in loop `while true` con ridisegno menu dopo ritorno
+- [x] M11b: Aggiungere pwd nella testata (basename + path completo dim)
+- [x] M11c: `stty sane` dopo ritorno da `_launch_tool`
+- [x] M11d: Pausa con "press any key" dopo errore tool non installato
+- [x] M11e: Verificare che `selected` non venga resettato nel loop
+
+---
+
+## M12: UX — info contestuali per vibecoders
+
+### M12a: Git branch e stato nel menu
+
+**Problema:** L'utente non vede su quale branch sta lavorando né se ha modifiche uncommitted, informazione critica prima di lanciare un tool AI.
+
+**Fix:** Aggiungere una riga nel header del menu che mostra il branch corrente e un indicatore dirty/clean. Usare `git rev-parse --abbrev-ref HEAD` e `git status --porcelain` (solo se si è in un repo git). Se non è un repo git, non mostrare nulla.
+
+### M12b: Timer sessione
+
+**Problema:** L'utente non sa quanto tempo ha passato in un assistant. Utile per tenere traccia del tempo di lavoro.
+
+**Fix:** Salvare `$SECONDS` prima di lanciare il tool e calcolare la differenza al ritorno. Mostrare brevemente "last session: Xm Ys" nel menu dopo il ritorno, sulla riga sotto il separatore inferiore (o nella riga di help). Il messaggio scompare al prossimo lancio.
+
+**Tasks:**
+- [ ] M12a: Riga git branch + dirty/clean nel header del menu
+- [ ] M12b: Timer sessione con display al ritorno nel menu

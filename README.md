@@ -3,7 +3,8 @@
 A terminal launcher for AI coding tools — with a full awake-mode toggle that keeps your PC alive.
 
 ```
-  ⚡  CRAZYCODE
+  ⚡  CRAZYCODE          📂 my-project
+  ~/code/my-project
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ▶ aider           AI pair programmer  ✓
   2 claudecode      Anthropic           ✓
@@ -15,6 +16,8 @@ A terminal launcher for AI coding tools — with a full awake-mode toggle that k
   ↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  q quit
   ⚠  all tools launch without asking permission
 ```
+
+The menu shows the current working directory and returns here after exiting any tool.
 
 ## Quick install
 

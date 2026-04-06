@@ -136,17 +136,16 @@ crazycode() {
   }
 
   awake_count() {
-    local count=0
-    [[ $sleep_masked -eq 1 ]] && ((count++))
-    [[ $caffeine_on -eq 1 ]] && ((count++))
-    [[ $lid_ignored -eq 1 ]] && ((count++))
-    [[ $lock_disabled -eq 1 ]] && ((count++))
-    echo "$count"
+    _awake_count=0
+    [[ $sleep_masked -eq 1 ]] && ((_awake_count++))
+    [[ $caffeine_on -eq 1 ]] && ((_awake_count++))
+    [[ $lid_ignored -eq 1 ]] && ((_awake_count++))
+    [[ $lock_disabled -eq 1 ]] && ((_awake_count++))
   }
 
   get_awake_line() {
-    local count
-    count=$(awake_count)
+    awake_count
+    local count=$_awake_count
     if [[ $count -eq 4 ]]; then
       printf "  ${BW}[c]${X} ${D}camomile${X} ${D}🌿${X}       ${BG}[awake mode on]${X}"
     elif [[ $count -gt 0 ]]; then
@@ -168,12 +167,14 @@ crazycode() {
       printf "\n  ${BR}${B}✗${X}  ${BW}${tool}${X} ${D}is not installed.${X}\n"
       printf "  ${D}Run the installer to set it up:${X}\n"
       printf "  ${D}  curl -fsSL https://raw.githubusercontent.com/Ymx1ZQ/crazycode/main/install.sh | bash${X}\n\n"
+      printf "  ${D}press any key to return to menu...${X}"
+      read -rsn1
       return 1
     fi
 
     printf "\n  ${color}${B}Launching ${tool}...${X}\n\n"
 
-    # shellcheck disable=SC2086 — args is from hardcoded array, word splitting is intentional
+    # shellcheck disable=SC2086
     ${cmd} ${launch_args[$idx]} "$@"
   }
 
@@ -253,128 +254,121 @@ crazycode() {
   }
   trap _cleanup EXIT INT TERM
 
-  # Row layout:
-  #   1  (blank)
-  #   2  ⚡ CRAZYCODE
-  #   3  ━━━━━━━━━━━━
-  #   4… items (4 + idx)
-  #   4+N separator
-  #   5+N awake line
-  #   6+N separator
-  #   7+N help
-  #   8+N warning
-  #   9+N cursor
+  # header = blank + title + path + separator = 4 rows before items
+  local hdr=4
+
+  # cache install status (doesn't change during session)
+  local -a installed=()
+  local i
+  for i in "${!cmds[@]}"; do
+    command -v "${cmds[$i]}" &>/dev/null && installed+=("${BG}✓${X}") || installed+=("${BR}✗${X}")
+  done
 
   draw_line() {
     local idx=$1 is_selected=$2
     local item="${items[$idx]}"
-    local cmd="${cmds[$idx]}"
     local color
     color=$(get_color "$item")
-    local installed_mark
-    if command -v "$cmd" &>/dev/null; then
-      installed_mark="${BG}✓${X}"
-    else
-      installed_mark="${BR}✗${X}"
-    fi
 
     local num=$((idx + 1))
-    local row=$((4 + idx))
+    local row=$((hdr + 1 + idx))
     echo -ne "\033[${row};1H\033[K"
     if [ "$is_selected" -eq 1 ]; then
-      printf "  ${BW}${B}▶${X} ${B}${color}%-15s${X} ${D}%s${X}  %b" "$item" "${descriptions[$idx]}" "$installed_mark"
+      printf "  ${BW}${B}▶${X} ${B}${color}%-15s${X} ${D}%s${X}  %b" "$item" "${descriptions[$idx]}" "${installed[$idx]}"
     else
-      printf "  ${D}${num}${X} ${color}%-15s${X} ${D}%s${X}  %b" "$item" "${descriptions[$idx]}" "$installed_mark"
+      printf "  ${D}${num}${X} ${color}%-15s${X} ${D}%s${X}  %b" "$item" "${descriptions[$idx]}" "${installed[$idx]}"
     fi
-  }
-
-  draw_menu() {
-    local i
-    for i in "${!items[@]}"; do
-      draw_line "$i" 0
-    done
   }
 
   draw_awake() {
-    local row=$((5 + num_items))
+    local row=$((hdr + num_items + 2))
     echo -ne "\033[${row};1H\033[K"
     get_awake_line
   }
 
   draw_all() {
+    check_awake
     clear
     printf "\n"
-    printf "  ${BR}${B}⚡  CRAZYCODE${X}\n"
+    printf "  ${BR}${B}⚡  CRAZYCODE${X}          ${BW}📂 ${PWD##*/}${X}\n"
+    printf "  ${D}%s${X}\n" "$PWD"
     printf "  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
-    draw_menu
-    printf "\033[$((4 + num_items));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
+    local i
+    for i in "${!items[@]}"; do draw_line "$i" 0; done
+    printf "\033[$((hdr + num_items + 1));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
     draw_awake
-    printf "\033[$((6 + num_items));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
-    printf "\033[$((7 + num_items));1H  ${D}↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  q quit${X}\n"
-    printf "\033[$((8 + num_items));1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}\n"
-    echo -ne "\033[$((9 + num_items));1H"
+    printf "\033[$((hdr + num_items + 3));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
+    printf "\033[$((hdr + num_items + 4));1H  ${D}↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  q quit${X}\n"
+    printf "\033[$((hdr + num_items + 5));1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}\n"
     draw_line "$selected" 1
   }
 
-  check_awake
   draw_all
   trap 'draw_all' WINCH
 
-  # ── input loop ────────────────────────────────────────────────────
+  # ── main TUI loop ────────────────────────────────────────────────
   while true; do
-    local key=""
-    read -rsn1 key
 
-    case "$key" in
-      $'\x1b')
-        read -rsn2 -t 0.1 key2
-        case "$key2" in
-          '[A')
-            prev_selected=$selected
-            selected=$(( (selected - 1 + num_items) % num_items ))
-            draw_line "$prev_selected" 0
-            draw_line "$selected" 1
-            ;;
-          '[B')
-            prev_selected=$selected
-            selected=$(( (selected + 1) % num_items ))
-            draw_line "$prev_selected" 0
-            draw_line "$selected" 1
-            ;;
-        esac
-        ;;
-      '')
-        break
-        ;;
-      c)
-        local prompt_row=$((9 + num_items))
-        echo -ne "\033[${prompt_row};1H\033[K"
-        sudo -v
-        echo -ne "\033[${prompt_row};1H\033[K"
-        if is_awake; then
-          disable_awake
-        else
-          enable_awake
-        fi
-        draw_awake
-        echo -ne "\033[${prompt_row};1H"
-        ;;
-      [1-4])
-        local num_idx=$((key - 1))
-        if [[ $num_idx -lt $num_items ]]; then
-          selected=$num_idx
+    # ── input loop ──────────────────────────────────────────────────
+    while true; do
+      local key=""
+      read -rsn1 key
+
+      case "$key" in
+        $'\x1b')
+          read -rsn2 -t 0.1 key2
+          case "$key2" in
+            '[A')
+              prev_selected=$selected
+              selected=$(( (selected - 1 + num_items) % num_items ))
+              draw_line "$prev_selected" 0
+              draw_line "$selected" 1
+              ;;
+            '[B')
+              prev_selected=$selected
+              selected=$(( (selected + 1) % num_items ))
+              draw_line "$prev_selected" 0
+              draw_line "$selected" 1
+              ;;
+          esac
+          ;;
+        '')
           break
-        fi
-        ;;
-      q)
-        clear
-        return 0
-        ;;
-    esac
-  done
+          ;;
+        c)
+          local prompt_row=$((hdr + num_items + 6))
+          echo -ne "\033[${prompt_row};1H\033[K"
+          sudo -v
+          echo -ne "\033[${prompt_row};1H\033[K"
+          if is_awake; then
+            disable_awake
+          else
+            enable_awake
+          fi
+          draw_awake
+          echo -ne "\033[${prompt_row};1H"
+          ;;
+        [1-4])
+          local num_idx=$((key - 1))
+          if [[ $num_idx -lt $num_items ]]; then
+            selected=$num_idx
+            break
+          fi
+          ;;
+        q)
+          clear
+          return 0
+          ;;
+      esac
+    done
 
-  clear
-  _launch_tool "$selected" "$@"
+    # ── launch selected tool ────────────────────────────────────────
+    clear
+    _launch_tool "$selected" "$@"
+    stty sane 2>/dev/null
+    draw_all
+
+  done
 }
 
 # ── bash completion ──────────────────────────────────────────────────
