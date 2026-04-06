@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-crazycode() {
+_crazycode_main() {
   # Colors
   local B='\033[1m' D='\033[2m' X='\033[0m'
   local BR='\033[1;31m'  # bold red
@@ -403,5 +403,5 @@ _crazycode_completions() {
 complete -F _crazycode_completions crazycode
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  crazycode "$@"
+  _crazycode_main "$@"
 fi

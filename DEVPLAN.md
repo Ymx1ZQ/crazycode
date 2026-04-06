@@ -332,3 +332,37 @@ README.md
 **Tasks:**
 - [x] M13a: Aggiungere label "last session:" al timer nel menu
 - [x] M13b: Auto-source dello script dopo l'installazione
+
+---
+
+## M14: Thin wrapper — crazycode sempre aggiornato senza re-source ✅
+
+### M14a: Wrapper nel bashrc
+
+**Problema:** Dopo un update (`git pull` nel reinstall), la funzione `crazycode()` resta in memoria con il codice vecchio. L'utente deve fare `source ~/.bashrc` per caricare la versione aggiornata.
+
+**Fix:** Cambiare l'architettura di caricamento:
+- `crazycode.sh` resta il file principale con tutta la logica, ma la funzione viene rinominata da `crazycode()` a `_crazycode_main()`
+- Nel `.bashrc`/`.zshrc` l'installer scrive un wrapper one-liner: `crazycode() { source ~/.crazycode/crazycode.sh && _crazycode_main "$@"; }`
+- Ogni invocazione ri-legge `crazycode.sh` dal disco → sempre aggiornato dopo un update
+- L'installer deve migrare la vecchia riga `source ~/.crazycode/crazycode.sh` al nuovo wrapper per chi ha già installato
+- Il bash completion resta in `crazycode.sh` (caricato a ogni invocazione, ok)
+
+**Tasks:**
+- [x] M14a: Rinominare `crazycode()` → `_crazycode_main()` in crazycode.sh
+- [x] M14b: Aggiornare installer per scrivere il wrapper one-liner nel rc file (con migrazione dalla vecchia riga)
+- [x] M14c: Aggiornare messaggio post-install (non serve più source manuale dopo gli update)
+
+---
+
+## M15: Installer — shortcut "a" (install all) e "s" (skip all) per le dipendenze
+
+### M15a: Scorciatoie interattive
+
+**Problema:** Durante l'installazione interattiva delle dipendenze opzionali, l'utente deve rispondere Y/n per ognuna. Manca un modo rapido per dire "installa tutte le rimanenti" o "salta tutte le rimanenti".
+
+**Fix:** Aggiungere alla funzione `_ask()` il supporto per le risposte `a` (all — installa questa e tutte le successive) e `s` (skip all — salta questa e tutte le successive). Quando l'utente risponde `a`, impostare `ALL=1` così i prompt successivi vengono auto-accettati. Quando risponde `s`, impostare un flag `SKIP_ALL=1` che fa ritornare 1 per tutti i prompt successivi. Aggiornare il prompt da `[Y/n]` a `[Y/n/a/s]`.
+
+**Tasks:**
+- [ ] M15a: Aggiungere flag SKIP_ALL e logica a/s nella funzione `_ask()`
+- [ ] M15b: Aggiornare il prompt e il messaggio iniziale per mostrare le nuove opzioni

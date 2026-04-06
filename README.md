@@ -29,7 +29,7 @@ curl -fsSL https://raw.githubusercontent.com/Ymx1ZQ/crazycode/main/install.sh | 
 
 This will:
 1. Clone the repo into `~/.crazycode/`
-2. Add `source ~/.crazycode/crazycode.sh` to your shell rc (`~/.bashrc` or `~/.zshrc`)
+2. Add a thin wrapper to your shell rc (`~/.bashrc` or `~/.zshrc`) — updates take effect immediately, no re-source needed
 3. Install all optional tools by default (press `n` to skip any)
 4. Show a summary of what was installed
 
@@ -68,7 +68,7 @@ Tab completion is built-in — just press `Tab` after `crazycode `.
 
 ```bash
 git clone https://github.com/Ymx1ZQ/crazycode.git ~/.crazycode
-echo 'source ~/.crazycode/crazycode.sh' >> ~/.bashrc
+echo 'crazycode() { source ~/.crazycode/crazycode.sh && _crazycode_main "$@"; }' >> ~/.bashrc
 source ~/.bashrc
 ```
 

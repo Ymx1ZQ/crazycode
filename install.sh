@@ -107,13 +107,21 @@ case "$SHELL_NAME" in
   *)    RC_FILE="$HOME/.bashrc" ;;
 esac
 
-SOURCE_LINE="source ~/.crazycode/crazycode.sh"
+OLD_SOURCE_LINE="source ~/.crazycode/crazycode.sh"
+WRAPPER_LINE='crazycode() { source ~/.crazycode/crazycode.sh && _crazycode_main "$@"; }'
 touch "$RC_FILE"
-if ! grep -qF "$SOURCE_LINE" "$RC_FILE"; then
-  printf '\n%s\n' "$SOURCE_LINE" >> "$RC_FILE"
+
+# Migrate from old source line to new wrapper
+if grep -qF "$OLD_SOURCE_LINE" "$RC_FILE" && ! grep -qF "_crazycode_main" "$RC_FILE"; then
+  grep -vF "$OLD_SOURCE_LINE" "$RC_FILE" > "$RC_FILE.tmp"
+  printf '%s\n' "$WRAPPER_LINE" >> "$RC_FILE.tmp"
+  mv "$RC_FILE.tmp" "$RC_FILE"
+  _ok "Migrated ~/${RC_FILE##*/} to thin wrapper"
+elif ! grep -qF "_crazycode_main" "$RC_FILE"; then
+  printf '\n%s\n' "$WRAPPER_LINE" >> "$RC_FILE"
   _ok "Added to ~/${RC_FILE##*/}"
 else
-  _ok "~/${RC_FILE##*/} already sourced — nothing to change"
+  _ok "~/${RC_FILE##*/} already configured — nothing to change"
 fi
 
 # ─── phase 2: optional tools ──────────────────────────────────────────────────
@@ -172,14 +180,9 @@ fi
 
 _ok "All done!"
 
-# Source for post-install verification; user must source RC file for persistence
-source "$HOME/.crazycode/crazycode.sh" 2>/dev/null
-
 echo
-_info "Now run this to activate crazycode in your current shell:"
-echo
-_info "    source ~/${RC_FILE##*/}"
-echo
-_info "New terminal windows will have it automatically."
+_info "To activate now:  source ~/${RC_FILE##*/}"
+_info "New terminals will have it automatically."
 _info "Then type:  crazycode"
+_info "Future updates take effect immediately — no re-source needed."
 echo
