@@ -366,3 +366,30 @@ README.md
 **Tasks:**
 - [x] M15a: Aggiungere flag SKIP_ALL e logica a/s nella funzione `_ask()`
 - [x] M15b: Aggiornare il prompt e il messaggio iniziale per mostrare le nuove opzioni
+
+---
+
+## M16: Tasto R — resume ultima sessione assistant ✅
+
+**Problema:** Quando l'utente esce da un assistant e torna al menu, non c'è modo rapido di tornare alla sessione precedente. Tutti e 4 i tool supportano il resume ma con flag/comandi diversi.
+
+**Resume per tool:**
+- aider: `aider --yes-always --restore-chat-history`
+- claude: `claude --dangerously-skip-permissions --continue`
+- opencode: `opencode --continue`
+- codex: `codex resume --last` (subcomando, non flag — sovrascrive cmd+args)
+
+**Fix:**
+1. Aggiungere array `resume_args` parallelo a `launch_args` con i flag di resume per ogni tool
+2. Per codex, gestione speciale: il resume usa un subcomando diverso (`codex resume --last`) invece di aggiungere un flag
+3. Tracciare `_last_tool` (indice dell'ultimo tool lanciato) dopo ogni lancio
+4. Aggiungere tasto `r`/`R` nel loop input che lancia `_launch_tool` in modalità resume
+5. Modificare `_launch_tool` per accettare un flag `--resume` che appende i resume_args (o usa il comando speciale per codex)
+6. Mostrare `r resume` nella riga di help solo quando `_last_tool` è impostato
+7. Nella riga del timer, aggiungere il nome del tool per dare contesto: `⏱  last session: aider · 12m 34s`
+
+**Tasks:**
+- [x] M16a: Aggiungere array `resume_args` e variabile `_last_tool`
+- [x] M16b: Modificare `_launch_tool` per supportare modalità resume
+- [x] M16c: Aggiungere tasto R nel loop input + aggiornare help line
+- [x] M16d: Mostrare nome tool nella riga timer

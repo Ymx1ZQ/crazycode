@@ -18,9 +18,16 @@ _crazycode_main() {
     ""
     "--sandbox danger-full-access --ask-for-approval never"
   )
+  local resume_args=(
+    "--restore-chat-history"
+    "--continue"
+    "--continue"
+    ""  # codex uses subcommand, handled in _launch_tool
+  )
   local num_items=${#items[@]}
   local selected=0
   local prev_selected=-1
+  local _last_tool=-1
 
   # ── awake mode state ──────────────────────────────────────────────
   local sleep_masked=0 caffeine_on=0 lid_ignored=0 lock_disabled=0
@@ -156,8 +163,8 @@ _crazycode_main() {
   }
 
   _launch_tool() {
-    local idx=$1
-    shift
+    local idx=$1 resume=${2:-0}
+    shift 2 2>/dev/null || shift
     local tool="${items[$idx]}"
     local cmd="${cmds[$idx]}"
     local color
@@ -172,10 +179,21 @@ _crazycode_main() {
       return 1
     fi
 
-    printf "\n  ${color}${B}Launching ${tool}...${X}\n\n"
-
-    # shellcheck disable=SC2086
-    ${cmd} ${launch_args[$idx]} "$@"
+    if [[ $resume -eq 1 ]]; then
+      printf "\n  ${color}${B}Resuming ${tool}...${X}\n\n"
+      # codex uses a subcommand for resume
+      if [[ "$tool" == "codex" ]]; then
+        # shellcheck disable=SC2086
+        ${cmd} resume --last "$@"
+      else
+        # shellcheck disable=SC2086
+        ${cmd} ${launch_args[$idx]} ${resume_args[$idx]} "$@"
+      fi
+    else
+      printf "\n  ${color}${B}Launching ${tool}...${X}\n\n"
+      # shellcheck disable=SC2086
+      ${cmd} ${launch_args[$idx]} "$@"
+    fi
   }
 
   _print_status() {
@@ -306,10 +324,13 @@ _crazycode_main() {
     printf "\033[$((hdr + num_items + 1));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
     draw_awake
     printf "\033[$((hdr + num_items + 3));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
-    printf "\033[$((hdr + num_items + 4));1H  ${D}↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  q quit${X}\n"
+    local help_line="↑↓/1-4 select  ·  enter launch  ·  c toggle"
+    [[ $_last_tool -ge 0 ]] && help_line+="  ·  r resume"
+    help_line+="  ·  q quit"
+    printf "\033[$((hdr + num_items + 4));1H  ${D}${help_line}${X}\n"
     local footer_row=$((hdr + num_items + 5))
     if [[ -n "$_last_session" ]]; then
-      printf "\033[${footer_row};1H  ${D}⏱  last session: ${_last_session}${X}\n"
+      printf "\033[${footer_row};1H  ${D}⏱  last session: ${items[$_last_tool]} · ${_last_session}${X}\n"
       ((footer_row++))
     fi
     printf "\033[${footer_row};1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}\n"
@@ -323,6 +344,7 @@ _crazycode_main() {
   while true; do
 
     # ── input loop ──────────────────────────────────────────────────
+    local _resume=0
     while true; do
       local key=""
       read -rsn1 key
@@ -363,6 +385,13 @@ _crazycode_main() {
           draw_awake
           echo -ne "\033[${prompt_row};1H"
           ;;
+        [rR])
+          if [[ $_last_tool -ge 0 ]]; then
+            selected=$_last_tool
+            _resume=1
+            break
+          fi
+          ;;
         [1-4])
           local num_idx=$((key - 1))
           if [[ $num_idx -lt $num_items ]]; then
@@ -380,7 +409,8 @@ _crazycode_main() {
     # ── launch selected tool ────────────────────────────────────────
     clear
     local _t0=$SECONDS
-    _launch_tool "$selected" "$@"
+    _launch_tool "$selected" "$_resume" "$@"
+    _last_tool=$selected
     stty sane 2>/dev/null
     local _elapsed=$(( SECONDS - _t0 ))
     local _m=$(( _elapsed / 60 )) _s=$(( _elapsed % 60 ))

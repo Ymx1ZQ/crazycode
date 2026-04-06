@@ -14,12 +14,12 @@ A terminal launcher for AI coding tools — with a full awake-mode toggle that k
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [c] coffeeshot ☕     [awake mode off]
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  q quit
-  ⏱  last session: 12m 34s
+  ↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  r resume  ·  q quit
+  ⏱  last session: aider · 12m 34s
   ⚠  all tools launch without asking permission
 ```
 
-The menu shows your working directory, git branch (with dirty indicator ●), and returns here after exiting any tool. Session duration is displayed after each tool exit.
+The menu shows your working directory, git branch (with dirty indicator ●), and returns here after exiting any tool. Session duration is displayed after each tool exit. Press `r` to resume the last session.
 
 ## Quick install
 
