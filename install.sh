@@ -171,6 +171,15 @@ if [[ $SILENT -eq 0 ]]; then
 fi
 
 _ok "All done!"
-_info "Reload your shell or run:  source ~/${RC_FILE##*/}"
+
+# Source for post-install verification; user must source RC file for persistence
+source "$HOME/.crazycode/crazycode.sh" 2>/dev/null
+
+echo
+_info "Now run this to activate crazycode in your current shell:"
+echo
+_info "    source ~/${RC_FILE##*/}"
+echo
+_info "New terminal windows will have it automatically."
 _info "Then type:  crazycode"
 echo

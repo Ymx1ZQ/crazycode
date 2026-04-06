@@ -15,7 +15,7 @@ A terminal launcher for AI coding tools — with a full awake-mode toggle that k
   [c] coffeeshot ☕     [awake mode off]
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  q quit
-  ⏱  12m 34s
+  ⏱  last session: 12m 34s
   ⚠  all tools launch without asking permission
 ```
 

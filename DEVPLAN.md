@@ -312,3 +312,23 @@ README.md
 **Tasks:**
 - [x] M12a: Riga git branch + dirty/clean nel header del menu
 - [x] M12b: Timer sessione con display al ritorno nel menu
+
+---
+
+## M13: UX fix — timer label + installer auto-source ✅
+
+### M13a: Timer label più chiaro
+
+**Problema:** Il timer mostra solo `⏱  9s` senza contesto — non si capisce che è la durata dell'ultima sessione con un tool.
+
+**Fix:** Cambiare il formato in `⏱  last session: Xm Ys` per rendere chiaro il significato.
+
+### M13b: Installer auto-source
+
+**Problema:** Dopo l'installazione, il comando `crazycode` non è disponibile nella shell corrente. L'utente deve fare manualmente `source ~/.bashrc` o riaprire il terminale.
+
+**Fix:** Nell'installer, dopo aver aggiunto la riga al rc file, eseguire direttamente `source` dello script crazycode.sh nella shell corrente, così il comando è subito disponibile.
+
+**Tasks:**
+- [x] M13a: Aggiungere label "last session:" al timer nel menu
+- [x] M13b: Auto-source dello script dopo l'installazione

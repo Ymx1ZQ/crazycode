@@ -309,7 +309,7 @@ crazycode() {
     printf "\033[$((hdr + num_items + 4));1H  ${D}↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  q quit${X}\n"
     local footer_row=$((hdr + num_items + 5))
     if [[ -n "$_last_session" ]]; then
-      printf "\033[${footer_row};1H  ${D}⏱  ${_last_session}${X}\n"
+      printf "\033[${footer_row};1H  ${D}⏱  last session: ${_last_session}${X}\n"
       ((footer_row++))
     fi
     printf "\033[${footer_row};1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}\n"
