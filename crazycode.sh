@@ -254,8 +254,10 @@ crazycode() {
   }
   trap _cleanup EXIT INT TERM
 
-  # header = blank + title + path + separator = 4 rows before items
+  # header = blank + title + path + [git] + separator
   local hdr=4
+  git rev-parse --is-inside-work-tree &>/dev/null && hdr=5
+  local _last_session=""
 
   # cache install status (doesn't change during session)
   local -a installed=()
@@ -292,6 +294,12 @@ crazycode() {
     printf "\n"
     printf "  ${BR}${B}⚡  CRAZYCODE${X}          ${BW}📂 ${PWD##*/}${X}\n"
     printf "  ${D}%s${X}\n" "$PWD"
+    if [[ $hdr -eq 5 ]]; then
+      local branch dirty=""
+      branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+      [[ -n $(git status --porcelain 2>/dev/null) ]] && dirty=" ${BY}●${X}"
+      printf "  ${D}⎇${X}  ${BW}${branch}${X}%b\n" "$dirty"
+    fi
     printf "  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
     local i
     for i in "${!items[@]}"; do draw_line "$i" 0; done
@@ -299,7 +307,12 @@ crazycode() {
     draw_awake
     printf "\033[$((hdr + num_items + 3));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
     printf "\033[$((hdr + num_items + 4));1H  ${D}↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  q quit${X}\n"
-    printf "\033[$((hdr + num_items + 5));1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}\n"
+    local footer_row=$((hdr + num_items + 5))
+    if [[ -n "$_last_session" ]]; then
+      printf "\033[${footer_row};1H  ${D}⏱  ${_last_session}${X}\n"
+      ((footer_row++))
+    fi
+    printf "\033[${footer_row};1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}\n"
     draw_line "$selected" 1
   }
 
@@ -336,7 +349,9 @@ crazycode() {
           break
           ;;
         c)
-          local prompt_row=$((hdr + num_items + 6))
+          local _extra=0
+          [[ -n "$_last_session" ]] && _extra=1
+          local prompt_row=$((hdr + num_items + 6 + _extra))
           echo -ne "\033[${prompt_row};1H\033[K"
           sudo -v
           echo -ne "\033[${prompt_row};1H\033[K"
@@ -364,8 +379,16 @@ crazycode() {
 
     # ── launch selected tool ────────────────────────────────────────
     clear
+    local _t0=$SECONDS
     _launch_tool "$selected" "$@"
     stty sane 2>/dev/null
+    local _elapsed=$(( SECONDS - _t0 ))
+    local _m=$(( _elapsed / 60 )) _s=$(( _elapsed % 60 ))
+    if [[ $_m -gt 0 ]]; then
+      _last_session="${_m}m ${_s}s"
+    else
+      _last_session="${_s}s"
+    fi
     draw_all
 
   done

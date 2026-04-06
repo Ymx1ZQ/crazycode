@@ -5,6 +5,7 @@ A terminal launcher for AI coding tools — with a full awake-mode toggle that k
 ```
   ⚡  CRAZYCODE          📂 my-project
   ~/code/my-project
+  ⎇  main ●
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ▶ aider           AI pair programmer  ✓
   2 claudecode      Anthropic           ✓
@@ -14,10 +15,11 @@ A terminal launcher for AI coding tools — with a full awake-mode toggle that k
   [c] coffeeshot ☕     [awake mode off]
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  q quit
+  ⏱  12m 34s
   ⚠  all tools launch without asking permission
 ```
 
-The menu shows the current working directory and returns here after exiting any tool.
+The menu shows your working directory, git branch (with dirty indicator ●), and returns here after exiting any tool. Session duration is displayed after each tool exit.
 
 ## Quick install
 

@@ -295,7 +295,7 @@ README.md
 
 ---
 
-## M12: UX — info contestuali per vibecoders
+## M12: UX — info contestuali per vibecoders ✅
 
 ### M12a: Git branch e stato nel menu
 
@@ -310,5 +310,5 @@ README.md
 **Fix:** Salvare `$SECONDS` prima di lanciare il tool e calcolare la differenza al ritorno. Mostrare brevemente "last session: Xm Ys" nel menu dopo il ritorno, sulla riga sotto il separatore inferiore (o nella riga di help). Il messaggio scompare al prossimo lancio.
 
 **Tasks:**
-- [ ] M12a: Riga git branch + dirty/clean nel header del menu
-- [ ] M12b: Timer sessione con display al ritorno nel menu
+- [x] M12a: Riga git branch + dirty/clean nel header del menu
+- [x] M12b: Timer sessione con display al ritorno nel menu
