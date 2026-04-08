@@ -3,19 +3,19 @@
 ## M1: Installer script ✅
 
 **Goal:** A single `install.sh` that:
-1. Installs crazycode itself (clona il repo in `~/.crazycode/`, aggiunge il source a `~/.bashrc`)
-2. Poi, uno per uno, chiede se installare ogni tool opzionale
+1. Installs crazycode itself (clones the repo into `~/.crazycode/`, adds the source line to `~/.bashrc`)
+2. Then, one by one, asks whether to install each optional tool
 
-**UX scelta:** prompt interattivo stile "opt-in per ogni tool" — l'utente vede nome, descrizione di una riga, e risponde `y/N`. Nessun tool viene installato silenziosamente.
+**Chosen UX:** interactive "opt-in per tool" prompt — the user sees the name, a one-line description, and answers `y/N`. No tool gets installed silently.
 
-**Struttura:**
+**Structure:**
 
 ```
 install.sh
-  └── fase 1: installa crazycode
-        - git clone git@github.com:Ymx1ZQ/crazycode.git ~/.crazycode  (o pull se già esiste)
-        - aggiunge `source ~/.crazycode/crazycode.sh` a ~/.bashrc se non già presente
-  └── fase 2: tool opzionali (uno per uno)
+  └── phase 1: install crazycode
+        - git clone git@github.com:Ymx1ZQ/crazycode.git ~/.crazycode  (or pull if it already exists)
+        - add `source ~/.crazycode/crazycode.sh` to ~/.bashrc if not already present
+  └── phase 2: optional tools (one by one)
         - [caffeine]     sudo apt install caffeine
         - [aider]        pipx install aider-chat  (fallback: pip install aider-chat)
         - [claude code]  curl -fsSL https://claude.ai/install.sh | bash
@@ -23,413 +23,413 @@ install.sh
         - [codex]        npm i -g @openai/codex
 ```
 
-**Prerequisiti rilevati automaticamente:**
-- `pipx` — se assente, suggerisce `sudo apt install pipx`
-- `npm` / Node.js — se assente, suggerisce installazione via nvm
-- `git` — se assente, blocca e avvisa
+**Auto-detected prerequisites:**
+- `pipx` — if missing, suggest `sudo apt install pipx`
+- `npm` / Node.js — if missing, suggest installing via nvm
+- `git` — if missing, block and warn
 
 **Tasks:**
-- [x] Scrivere `install.sh` con fase 1 (self-install di crazycode)
-- [x] Aggiungere prompt interattivo per ogni tool opzionale
-- [x] Rilevare prerequisiti (git, pipx, npm) e stampare avvisi chiari
-- [x] Rendere lo script idempotente (rieseguibile senza danni)
-- [x] Testare su shell pulita (bash -n syntax check)
+- [x] Write `install.sh` with phase 1 (crazycode self-install)
+- [x] Add interactive prompt for each optional tool
+- [x] Detect prerequisites (git, pipx, npm) and print clear warnings
+- [x] Make the script idempotent (safe to re-run)
+- [x] Test on a clean shell (bash -n syntax check)
 
 ---
 
 ## M2: README ✅
 
-**Goal:** `README.md` che spiega cos'è crazycode, cosa fa ogni opzione del menu, e come installarlo con un solo comando.
+**Goal:** A `README.md` that explains what crazycode is, what each menu option does, and how to install it with a single command.
 
-**Struttura:**
+**Structure:**
 
 ```
 README.md
-  ├── Titolo + one-liner descrittivo
-  ├── Screenshot / demo (ASCII del menu)
-  ├── Quick install (un solo comando che pesca da GitHub)
+  ├── Title + descriptive one-liner
+  ├── Screenshot / demo (ASCII of the menu)
+  ├── Quick install (single command pulled from GitHub)
   │     curl -fsSL https://raw.githubusercontent.com/Ymx1ZQ/crazycode/main/install.sh | bash
-  ├── Cosa fa — tabella con ogni opzione del menu
-  │     coffeeshot: tiene lo schermo acceso (usa caffeine-indicator)
-  │     nosleep:    blocca suspend/hibernate via systemd
-  │     aider / claude / codex / opencode: launcher AI
-  ├── Installazione manuale (alternativa al quickinstall)
-  └── Requisiti
+  ├── What it does — table with each menu option
+  │     coffeeshot: keeps the screen on (uses caffeine-indicator)
+  │     nosleep:    blocks suspend/hibernate via systemd
+  │     aider / claude / codex / opencode: AI launchers
+  ├── Manual install (alternative to the quickinstall)
+  └── Requirements
 ```
 
 **Tasks:**
-- [x] Scrivere `README.md` con tutte le sezioni
-- [x] Includere il quickinstall one-liner (presuppone `install.sh` su main)
-- [x] Aggiungere demo ASCII del menu crazycode
+- [x] Write `README.md` with all sections
+- [x] Include the quickinstall one-liner (assumes `install.sh` is on main)
+- [x] Add ASCII demo of the crazycode menu
 
 ---
 
 ## M3: Fix awake mode — `systemctl restart systemd-logind` kills the session ✅
 
-**Problema:** Premere `c` per attivare/disattivare awake mode chiama `sudo systemctl restart systemd-logind` (righe 87 e 105 di `crazycode.sh`). Questo **termina tutte le sessioni utente** — il desktop crasha, l'utente viene buttato fuori.
+**Problem:** Pressing `c` to toggle awake mode calls `sudo systemctl restart systemd-logind` (lines 87 and 105 of `crazycode.sh`). This **terminates all user sessions** — the desktop crashes and the user gets kicked out.
 
-**Obiettivo:** L'awake mode deve tenere il PC sempre attivo per l'utente — niente schermata di login, niente standby, niente lock dello schermo. Il toggle deve funzionare senza distruggere la sessione.
+**Goal:** Awake mode must keep the PC always active for the user — no login screen, no standby, no screen lock. The toggle must work without destroying the session.
 
 **Fix:**
-- Sostituire `systemctl restart systemd-logind` con `sudo systemctl kill -s HUP systemd-logind` che ricarica la config senza killare le sessioni (sia in `enable_awake` che in `disable_awake`)
-- Verificare che il segnale HUP sia sufficiente per applicare le modifiche a `logind.conf`
+- Replace `systemctl restart systemd-logind` with `sudo systemctl kill -s HUP systemd-logind`, which reloads the config without killing user sessions (in both `enable_awake` and `disable_awake`)
+- Verify that the HUP signal is enough to apply changes to `logind.conf`
 
 **Tasks:**
-- [x] Sostituire `restart` con `kill -s HUP` in `enable_awake`
-- [x] Sostituire `restart` con `kill -s HUP` in `disable_awake`
-- [x] Testare che il toggle coffeeshot/camomile non uccida la sessione
+- [x] Replace `restart` with `kill -s HUP` in `enable_awake`
+- [x] Replace `restart` with `kill -s HUP` in `disable_awake`
+- [x] Test that the coffeeshot/camomile toggle does not kill the session
 
 ---
 
-## M4: Fix posizione prompt sudo nel TUI ✅
+## M4: Fix sudo prompt position in the TUI ✅
 
-**Problema:** Quando `enable_awake`/`disable_awake` chiede la password sudo, il prompt appare nella posizione corrente del cursore (in fondo al terminale), non vicino alla riga coffeeshot/camomile. L'utente non capisce cosa sta succedendo.
+**Problem:** When `enable_awake`/`disable_awake` asks for the sudo password, the prompt appears at the current cursor position (at the bottom of the terminal), not near the coffeeshot/camomile line. The user does not understand what is happening.
 
 **Fix:**
-- Pre-autenticare sudo prima dei comandi awake: posizionare il cursore sulla riga giusta (sotto coffeeshot/camomile) e fare un `sudo -v` lì, così il prompt della password appare nel posto giusto
-- Dopo l'autenticazione, procedere con i comandi sudo (che useranno il token sudo già attivo)
+- Pre-authenticate sudo before the awake commands: position the cursor on the right line (below coffeeshot/camomile) and run `sudo -v` there, so the password prompt appears in the right place
+- After authentication, proceed with the sudo commands (which will use the already-active sudo token)
 
 **Tasks:**
-- [x] Aggiungere `sudo -v` con cursore posizionato sotto la riga awake prima di chiamare `enable_awake`/`disable_awake`
-- [x] Ripulire eventuali artefatti visivi dopo l'inserimento password
-- [x] Ridisegnare il menu dopo il toggle
+- [x] Add `sudo -v` with the cursor positioned below the awake line before calling `enable_awake`/`disable_awake`
+- [x] Clean up any visual artifacts after entering the password
+- [x] Redraw the menu after the toggle
 
 ---
 
-## M5: Riga "all tools launch without asking permission" ✅
+## M5: "all tools launch without asking permission" line ✅
 
-**Problema:** L'utente non vede che tutti i tool vengono lanciati senza chiedere permessi (es. `--dangerously-skip-permissions`, `--yes-always`, `--sandbox danger-full-access`).
+**Problem:** The user does not realize that all tools are launched without asking for permission (e.g. `--dangerously-skip-permissions`, `--yes-always`, `--sandbox danger-full-access`).
 
 **Fix:**
-- Aggiungere una riga informativa in fondo al menu, sotto la riga di help, es:
+- Add an informational line at the bottom of the menu, below the help line, e.g.:
   `⚠ all tools launch without asking permission`
 
 **Tasks:**
-- [x] Aggiungere la riga sotto l'help nel draw del menu
-- [x] Assicurarsi che non rompa il posizionamento delle altre righe (aggiornare offset righe)
+- [x] Add the line below the help in the menu draw
+- [x] Make sure it does not break the positioning of other lines (update row offsets)
 
 ---
 
-## M6: Installer — default "installa tutto", opt-out ✅
+## M6: Installer — default "install everything", opt-out ✅
 
-**Problema:** Attualmente `install.sh` chiede `[y/N]` per ogni tool (opt-in). L'utente vuole il contrario: di default installa tutto, l'utente dice `n` solo se non vuole qualcosa.
+**Problem:** Currently `install.sh` asks `[y/N]` for each tool (opt-in). The user wants the opposite: install everything by default; the user only says `n` to skip something.
 
 **Fix:**
-- Cambiare il prompt da `[y/N]` a `[Y/n]`
-- Invertire la logica: se l'utente preme invio senza scrivere nulla, il tool viene installato
+- Change the prompt from `[y/N]` to `[Y/n]`
+- Invert the logic: if the user presses enter without typing anything, the tool gets installed
 
 **Tasks:**
-- [x] Modificare `_ask()` in `install.sh`: default a `Y`, accettare `n/N` come skip
-- [x] Aggiornare il testo del prompt (`Install? [Y/n]`)
-- [x] Aggiornare il messaggio introduttivo della fase 2
+- [x] Change `_ask()` in `install.sh`: default to `Y`, accept `n/N` as skip
+- [x] Update the prompt text (`Install? [Y/n]`)
+- [x] Update the introductory message of phase 2
 
 ---
 
-## M7: Ottimizzazioni varie ✅
+## M7: Misc optimizations ✅
 
-### M7a: Verifica tool installato prima di lanciare
+### M7a: Verify tool is installed before launching
 
-**Problema:** Quando l'utente preme enter su un tool (es. `aider`), lo script lo lancia direttamente. Se il tool non è installato, l'utente vede un errore bash criptico.
+**Problem:** When the user presses enter on a tool (e.g. `aider`), the script launches it directly. If the tool is not installed, the user sees a cryptic bash error.
 
-**Fix:** Aggiungere `command -v` check prima del lancio; se manca, mostrare messaggio chiaro con istruzioni di installazione.
+**Fix:** Add a `command -v` check before launching; if missing, show a clear message with installation instructions.
 
-### M7b: Trap per cleanup terminale
+### M7b: Trap for terminal cleanup
 
-**Problema:** Se l'utente fa Ctrl+C durante il menu, il terminale potrebbe rimanere in stato sporco (cursore nascosto, echo disabilitato, ecc.).
+**Problem:** If the user presses Ctrl+C during the menu, the terminal could be left in a dirty state (cursor hidden, echo disabled, etc.).
 
-**Fix:** Aggiungere `trap` per ripristinare il terminale su EXIT/INT/TERM.
+**Fix:** Add a `trap` to restore the terminal on EXIT/INT/TERM.
 
-### M7c: Evitare sudo ridondanti
+### M7c: Avoid redundant sudo
 
-**Problema:** `enable_awake` chiama `sudo` per ogni comando. Se il token sudo è scaduto, chiede la password più volte.
+**Problem:** `enable_awake` calls `sudo` for every command. If the sudo token has expired, it asks for the password multiple times.
 
-**Fix:** Fare un singolo `sudo -v` all'inizio e poi usare il token per tutti i comandi.
+**Fix:** Run a single `sudo -v` at the beginning and then use the token for all the commands.
 
-### M7d: Caffeine activation — approccio più robusto
+### M7d: Caffeine activation — more robust approach
 
-**Problema:** Il blocco gdbus (righe 71-82) per attivare caffeine usa il bus KDE (`org.kde.StatusNotifierWatcher`) ed è fragile. Potrebbe non funzionare su GNOME o altri DE.
+**Problem:** The gdbus block (lines 71-82) for activating caffeine uses the KDE bus (`org.kde.StatusNotifierWatcher`) and is fragile. It may not work on GNOME or other DEs.
 
-**Fix:** Considerare alternative più semplici/portabili:
-- `xdg-screensaver reset` in un loop
-- `xset s off -dpms` come fallback
-- Controllare se caffeine ha un CLI per l'attivazione (`caffeine-indicator --activate` o simile)
+**Fix:** Consider simpler/more portable alternatives:
+- `xdg-screensaver reset` in a loop
+- `xset s off -dpms` as fallback
+- Check whether caffeine has a CLI for activation (`caffeine-indicator --activate` or similar)
 
 **Tasks:**
-- [x] M7a: Check `command -v` prima di lanciare ogni tool
-- [x] M7b: Aggiungere trap per cleanup terminale su EXIT/INT/TERM
-- [x] M7c: Singolo `sudo -v` prima dei comandi awake
-- [x] M7d: Sostituito gdbus KDE con `xset s off -dpms` (cross-DE) + caffeine-indicator come indicatore visivo
+- [x] M7a: `command -v` check before launching each tool
+- [x] M7b: Add trap for terminal cleanup on EXIT/INT/TERM
+- [x] M7c: Single `sudo -v` before the awake commands
+- [x] M7d: Replaced gdbus KDE with `xset s off -dpms` (cross-DE) + caffeine-indicator as visual indicator
 
 ---
 
-## M8: Chiamata programmatica + autocomplete ✅
+## M8: Programmatic invocation + autocomplete ✅
 
-**Goal:** Poter chiamare `crazycode <subcommand>` direttamente da terminale senza passare dal TUI. Se nessun argomento → mostra il TUI come oggi.
+**Goal:** Be able to call `crazycode <subcommand>` directly from the terminal without going through the TUI. If no argument → show the TUI as today.
 
-**Subcomandi:**
-- `crazycode aider` → lancia aider direttamente
-- `crazycode claude` → lancia claude code direttamente
-- `crazycode codex` → lancia codex direttamente
-- `crazycode opencode` → lancia opencode direttamente
-- `crazycode coffeeshot` → attiva awake mode (toggle on/off)
-- `crazycode status` → mostra stato awake mode senza TUI
-- `crazycode --help` → mostra usage con lista comandi
+**Subcommands:**
+- `crazycode aider` → launch aider directly
+- `crazycode claude` → launch claude code directly
+- `crazycode codex` → launch codex directly
+- `crazycode opencode` → launch opencode directly
+- `crazycode coffeeshot` → toggle awake mode (on/off)
+- `crazycode status` → show awake mode status without TUI
+- `crazycode --help` → show usage with command list
 
-**Autocomplete bash:**
-- Funzione `_crazycode_completions` registrata con `complete -F`
-- Completa i subcomandi: `aider claude codex opencode coffeeshot status --help`
-- La registrazione va nel file sorgato (`crazycode.sh`) così è attiva appena caricato
+**Bash autocomplete:**
+- `_crazycode_completions` function registered with `complete -F`
+- Completes the subcommands: `aider claude codex opencode coffeeshot status --help`
+- Registration goes in the sourced file (`crazycode.sh`) so it is active as soon as it is loaded
 
 **Installer:**
-- L'installer deve installare il file di completamento (o verificare che il source in bashrc lo attivi automaticamente — dato che il complete è dentro `crazycode.sh`, basta il source esistente)
+- The installer must install the completion file (or verify that the source line in bashrc activates it automatically — since `complete` is inside `crazycode.sh`, the existing source is enough)
 
 **Tasks:**
-- [x] Aggiungere parsing argomenti all'inizio di `crazycode()`: se `$1` è un subcomando noto, eseguire direttamente senza TUI
-- [x] Implementare `crazycode coffeeshot` come toggle non-interattivo (stampa stato dopo toggle)
-- [x] Implementare `crazycode status` (stampa stato awake mode)
-- [x] Implementare `crazycode --help`
-- [x] Aggiungere funzione `_crazycode_completions` + `complete -F` alla fine di `crazycode.sh`
-- [x] Verificare che l'autocomplete funzioni dopo `source ~/.bashrc`
+- [x] Add argument parsing at the start of `crazycode()`: if `$1` is a known subcommand, run it directly without the TUI
+- [x] Implement `crazycode coffeeshot` as a non-interactive toggle (print state after toggle)
+- [x] Implement `crazycode status` (print awake mode state)
+- [x] Implement `crazycode --help`
+- [x] Add `_crazycode_completions` function + `complete -F` at the end of `crazycode.sh`
+- [x] Verify autocomplete works after `source ~/.bashrc`
 
 ---
 
-## M9: Miglioramenti grafici / UX del TUI ✅
+## M9: TUI graphics / UX improvements ✅
 
-### M9a: Indicatore tool installati
+### M9a: Installed-tool indicator
 
-**Problema:** L'utente non sa quali tool sono installati fino a quando non li seleziona e preme enter.
+**Problem:** The user does not know which tools are installed until they select them and press enter.
 
-**Fix:** Mostrare un indicatore accanto a ogni tool nel menu: `✓` se installato, `✗` se mancante (in dim). Usare l'array `cmds` per il check con `command -v`.
+**Fix:** Show an indicator next to each tool in the menu: `✓` if installed, `✗` if missing (in dim). Use the `cmds` array for the check with `command -v`.
 
-### M9b: Navigazione con shortcut diretti
+### M9b: Direct shortcut navigation
 
-**Problema:** Attualmente si può solo navigare con frecce + enter. Sarebbe comodo premere un tasto per andare direttamente al tool.
+**Problem:** Currently you can only navigate with arrows + enter. It would be handy to press a key to go directly to a tool.
 
-**Fix:** Aggiungere shortcut numerici `1-4` per selezionare e lanciare direttamente il tool corrispondente.
+**Fix:** Add numeric shortcuts `1-4` to select and launch the corresponding tool directly.
 
-### M9c: Stato dettagliato awake mode
+### M9c: Detailed awake mode state
 
-**Problema:** Il menu mostra solo "awake mode on/off" ma non quali componenti sono attivi.
+**Problem:** The menu shows only "awake mode on/off" but not which components are active.
 
-**Fix:** Quando awake è parziale (alcuni check passano, altri no), mostrare un indicatore intermedio tipo `[partial]` in giallo, oppure mostrare i singoli stati su hover/espansione.
+**Fix:** When awake is partial (some checks pass, others do not), show an intermediate indicator like `[partial]` in yellow, or show the individual states on hover/expansion.
 
-### M9d: Ridisegno completo su resize terminale
+### M9d: Full redraw on terminal resize
 
-**Problema:** Se l'utente ridimensiona il terminale durante il menu, il layout si rompe.
+**Problem:** If the user resizes the terminal during the menu, the layout breaks.
 
-**Fix:** Aggiungere trap su `WINCH` che ridisegna tutto il menu.
+**Fix:** Add a trap on `WINCH` that redraws the entire menu.
 
 **Tasks:**
-- [x] M9a: Aggiungere ✓/✗ accanto a ogni tool nel menu
-- [x] M9b: Aggiungere shortcut numerici 1-4 per lancio diretto
-- [x] M9c: Mostrare stato parziale awake in giallo `[partial X/4]`
-- [x] M9d: Trap WINCH per ridisegno su resize via `draw_all`
+- [x] M9a: Add ✓/✗ next to each tool in the menu
+- [x] M9b: Add numeric shortcuts 1-4 for direct launch
+- [x] M9c: Show partial awake state in yellow `[partial X/4]`
+- [x] M9d: WINCH trap for resize redraw via `draw_all`
 
 ---
 
-## M10: Miglioramenti installer ✅
+## M10: Installer improvements ✅
 
-### M10a: Verifica post-install
+### M10a: Post-install verification
 
-**Problema:** L'installer non verifica se l'installazione di ogni tool è andata a buon fine. Se un `npm i -g` fallisce silenziosamente, l'utente non lo sa.
+**Problem:** The installer does not verify whether each tool's installation succeeded. If `npm i -g` fails silently, the user does not know.
 
-**Fix:** Dopo ogni installazione, fare `command -v <tool>` e mostrare ✓ o ✗ con messaggio chiaro. A fine installer, stampare una tabella riassuntiva.
+**Fix:** After each install, run `command -v <tool>` and show ✓ or ✗ with a clear message. At the end of the installer, print a summary table.
 
-### M10b: Flag `--all` / `--silent`
+### M10b: `--all` / `--silent` flags
 
-**Problema:** Per automazione (CI, dotfiles bootstrap), serve un modo per installare tutto senza prompt.
+**Problem:** For automation (CI, dotfiles bootstrap), there needs to be a way to install everything without prompts.
 
-**Fix:** Aggiungere `--all` (installa tutto senza chiedere) e `--silent` (nessun output interattivo, solo errori).
+**Fix:** Add `--all` (install everything without asking) and `--silent` (no interactive output, errors only).
 
-### M10c: Supporto zsh
+### M10c: zsh support
 
-**Problema:** L'installer modifica solo `~/.bashrc`. Utenti zsh devono farlo manualmente.
+**Problem:** The installer only modifies `~/.bashrc`. zsh users have to do it manually.
 
-**Fix:** Rilevare la shell dell'utente (`$SHELL`) e aggiungere il source al file rc corretto (`~/.bashrc` o `~/.zshrc`).
+**Fix:** Detect the user's shell (`$SHELL`) and add the source line to the right rc file (`~/.bashrc` or `~/.zshrc`).
 
 **Tasks:**
-- [x] M10a: Aggiungere verifica post-install per ogni tool + tabella riassuntiva
-- [x] M10b: Aggiungere flag `--all` e `--silent`
-- [x] M10c: Rilevare shell e supportare zsh
+- [x] M10a: Add post-install verification per tool + summary table
+- [x] M10b: Add `--all` and `--silent` flags
+- [x] M10c: Detect shell and support zsh
 
 ---
 
-## M11: UX — ritorno al menu, directory, robustezza terminale ✅
+## M11: UX — return to menu, directory, terminal robustness ✅
 
-### M11a: Loop ritorno al menu dopo uscita assistant
+### M11a: Loop back to the menu after assistant exit
 
-**Problema:** Quando si esce da un assistant (con `/exit` o Ctrl+C), crazycode termina e l'utente torna alla shell. Deve invece tornare al menu TUI.
+**Problem:** When you exit an assistant (with `/exit` or Ctrl+C), crazycode terminates and the user returns to the shell. It should instead return to the TUI menu.
 
-**Fix:** Wrappare il blocco lancio (linee 376-377) in un `while true` loop. Dopo che `_launch_tool` ritorna, ridisegnare il menu. Il tasto `q` nel menu resta l'unico modo per uscire davvero.
+**Fix:** Wrap the launch block (lines 376-377) in a `while true` loop. After `_launch_tool` returns, redraw the menu. The `q` key in the menu remains the only way to actually exit.
 
-### M11b: Mostrare directory corrente nel menu
+### M11b: Show current directory in the menu
 
-**Problema:** Il menu non indica in quale cartella si sta lavorando. L'utente non sa su quale progetto sta per lanciare un tool.
+**Problem:** The menu does not say which folder you are working in. The user does not know which project they are about to launch a tool against.
 
-**Fix:** Aggiungere la pwd nella testata del menu. Mostrare il nome del progetto (basename) in evidenza e il path completo in dim sotto. Aggiornare il layout delle righe di conseguenza.
+**Fix:** Add the pwd to the menu header. Show the project name (basename) prominently and the full path in dim below it. Update line layout accordingly.
 
-### M11c: `stty sane` dopo ogni assistant
+### M11c: `stty sane` after each assistant
 
-**Problema:** Se un assistant crasha o lascia il terminale in stato sporco (echo off, raw mode), il menu si rompe al ritorno.
+**Problem:** If an assistant crashes or leaves the terminal in a dirty state (echo off, raw mode), the menu breaks on return.
 
-**Fix:** Eseguire `stty sane 2>/dev/null` dopo il ritorno da `_launch_tool`, prima di ridisegnare il menu.
+**Fix:** Run `stty sane 2>/dev/null` after returning from `_launch_tool`, before redrawing the menu.
 
-### M11d: Pausa su errore tool non installato
+### M11d: Pause on "tool not installed" error
 
-**Problema:** Con il loop del M11a, se un tool non è installato il messaggio di errore verrebbe cancellato dal ridisegno immediato del menu.
+**Problem:** With the M11a loop, the error message for an uninstalled tool would be wiped by the immediate menu redraw.
 
-**Fix:** Aggiungere `read -rsn1 -p "  press any key..."` dopo il messaggio di errore in `_launch_tool`, così l'utente ha tempo di leggerlo.
+**Fix:** Add `read -rsn1 -p "  press any key..."` after the error message in `_launch_tool`, so the user has time to read it.
 
-### M11e: Mantenere selezione sull'ultimo tool usato
+### M11e: Keep selection on the last tool used
 
-**Problema:** Quando si torna al menu dopo un assistant, il cursore torna al primo elemento. Dovrebbe restare sul tool appena usato, così si può rilanciare con un enter.
+**Problem:** When returning to the menu after an assistant, the cursor jumps back to the first item. It should stay on the tool just used so it can be relaunched with a single enter.
 
-**Fix:** Non resettare `selected` nel loop. La variabile mantiene già il valore corretto, basta non toccarla prima del ridisegno.
+**Fix:** Do not reset `selected` in the loop. The variable already keeps the right value — just don't touch it before the redraw.
 
 **Tasks:**
-- [x] M11a: Wrappare lancio in loop `while true` con ridisegno menu dopo ritorno
-- [x] M11b: Aggiungere pwd nella testata (basename + path completo dim)
-- [x] M11c: `stty sane` dopo ritorno da `_launch_tool`
-- [x] M11d: Pausa con "press any key" dopo errore tool non installato
-- [x] M11e: Verificare che `selected` non venga resettato nel loop
+- [x] M11a: Wrap the launch in a `while true` loop with menu redraw on return
+- [x] M11b: Add pwd to the header (basename + dim full path)
+- [x] M11c: `stty sane` after returning from `_launch_tool`
+- [x] M11d: "press any key" pause after a "tool not installed" error
+- [x] M11e: Verify that `selected` is not reset in the loop
 
 ---
 
-## M12: UX — info contestuali per vibecoders ✅
+## M12: UX — contextual info for vibecoders ✅
 
-### M12a: Git branch e stato nel menu
+### M12a: Git branch and state in the menu
 
-**Problema:** L'utente non vede su quale branch sta lavorando né se ha modifiche uncommitted, informazione critica prima di lanciare un tool AI.
+**Problem:** The user does not see which branch they are working on, nor whether they have uncommitted changes — critical information before launching an AI tool.
 
-**Fix:** Aggiungere una riga nel header del menu che mostra il branch corrente e un indicatore dirty/clean. Usare `git rev-parse --abbrev-ref HEAD` e `git status --porcelain` (solo se si è in un repo git). Se non è un repo git, non mostrare nulla.
+**Fix:** Add a line to the menu header that shows the current branch and a dirty/clean indicator. Use `git rev-parse --abbrev-ref HEAD` and `git status --porcelain` (only when inside a git repo). If not a git repo, show nothing.
 
-### M12b: Timer sessione
+### M12b: Session timer
 
-**Problema:** L'utente non sa quanto tempo ha passato in un assistant. Utile per tenere traccia del tempo di lavoro.
+**Problem:** The user does not know how long they have spent in an assistant. Useful for tracking work time.
 
-**Fix:** Salvare `$SECONDS` prima di lanciare il tool e calcolare la differenza al ritorno. Mostrare brevemente "last session: Xm Ys" nel menu dopo il ritorno, sulla riga sotto il separatore inferiore (o nella riga di help). Il messaggio scompare al prossimo lancio.
+**Fix:** Save `$SECONDS` before launching the tool and compute the difference on return. Briefly show "last session: Xm Ys" in the menu after the return, on the line below the lower separator (or in the help line). The message disappears at the next launch.
 
 **Tasks:**
-- [x] M12a: Riga git branch + dirty/clean nel header del menu
-- [x] M12b: Timer sessione con display al ritorno nel menu
+- [x] M12a: Git branch + dirty/clean line in the menu header
+- [x] M12b: Session timer with display on return to the menu
 
 ---
 
 ## M13: UX fix — timer label + installer auto-source ✅
 
-### M13a: Timer label più chiaro
+### M13a: Clearer timer label
 
-**Problema:** Il timer mostra solo `⏱  9s` senza contesto — non si capisce che è la durata dell'ultima sessione con un tool.
+**Problem:** The timer shows only `⏱  9s` with no context — it is not clear that this is the duration of the last session with a tool.
 
-**Fix:** Cambiare il formato in `⏱  last session: Xm Ys` per rendere chiaro il significato.
+**Fix:** Change the format to `⏱  last session: Xm Ys` to make the meaning clear.
 
 ### M13b: Installer auto-source
 
-**Problema:** Dopo l'installazione, il comando `crazycode` non è disponibile nella shell corrente. L'utente deve fare manualmente `source ~/.bashrc` o riaprire il terminale.
+**Problem:** After installation, the `crazycode` command is not available in the current shell. The user has to manually run `source ~/.bashrc` or reopen the terminal.
 
-**Fix:** Nell'installer, dopo aver aggiunto la riga al rc file, eseguire direttamente `source` dello script crazycode.sh nella shell corrente, così il comando è subito disponibile.
+**Fix:** In the installer, after adding the line to the rc file, directly `source` the crazycode.sh script in the current shell so the command is immediately available.
 
 **Tasks:**
-- [x] M13a: Aggiungere label "last session:" al timer nel menu
-- [x] M13b: Auto-source dello script dopo l'installazione
+- [x] M13a: Add "last session:" label to the timer in the menu
+- [x] M13b: Auto-source the script after installation
 
 ---
 
-## M14: Thin wrapper — crazycode sempre aggiornato senza re-source ✅
+## M14: Thin wrapper — crazycode always up to date without re-source ✅
 
-### M14a: Wrapper nel bashrc
+### M14a: Wrapper in the bashrc
 
-**Problema:** Dopo un update (`git pull` nel reinstall), la funzione `crazycode()` resta in memoria con il codice vecchio. L'utente deve fare `source ~/.bashrc` per caricare la versione aggiornata.
+**Problem:** After an update (`git pull` in the reinstall), the `crazycode()` function stays in memory with the old code. The user has to run `source ~/.bashrc` to load the updated version.
 
-**Fix:** Cambiare l'architettura di caricamento:
-- `crazycode.sh` resta il file principale con tutta la logica, ma la funzione viene rinominata da `crazycode()` a `_crazycode_main()`
-- Nel `.bashrc`/`.zshrc` l'installer scrive un wrapper one-liner: `crazycode() { source ~/.crazycode/crazycode.sh && _crazycode_main "$@"; }`
-- Ogni invocazione ri-legge `crazycode.sh` dal disco → sempre aggiornato dopo un update
-- L'installer deve migrare la vecchia riga `source ~/.crazycode/crazycode.sh` al nuovo wrapper per chi ha già installato
-- Il bash completion resta in `crazycode.sh` (caricato a ogni invocazione, ok)
+**Fix:** Change the loading architecture:
+- `crazycode.sh` remains the main file with all the logic, but the function is renamed from `crazycode()` to `_crazycode_main()`
+- In `.bashrc`/`.zshrc` the installer writes a one-liner wrapper: `crazycode() { source ~/.crazycode/crazycode.sh && _crazycode_main "$@"; }`
+- Every invocation re-reads `crazycode.sh` from disk → always up to date after an update
+- The installer must migrate the old `source ~/.crazycode/crazycode.sh` line to the new wrapper for users who already installed
+- The bash completion stays in `crazycode.sh` (loaded on every invocation, fine)
 
 **Tasks:**
-- [x] M14a: Rinominare `crazycode()` → `_crazycode_main()` in crazycode.sh
-- [x] M14b: Aggiornare installer per scrivere il wrapper one-liner nel rc file (con migrazione dalla vecchia riga)
-- [x] M14c: Aggiornare messaggio post-install (non serve più source manuale dopo gli update)
+- [x] M14a: Rename `crazycode()` → `_crazycode_main()` in crazycode.sh
+- [x] M14b: Update installer to write the one-liner wrapper in the rc file (with migration from the old line)
+- [x] M14c: Update post-install message (no more manual source needed after updates)
 
 ---
 
-## M15: Installer — shortcut "a" (install all) e "s" (skip all) per le dipendenze ✅
+## M15: Installer — "a" (install all) and "s" (skip all) shortcuts for dependencies ✅
 
-### M15a: Scorciatoie interattive
+### M15a: Interactive shortcuts
 
-**Problema:** Durante l'installazione interattiva delle dipendenze opzionali, l'utente deve rispondere Y/n per ognuna. Manca un modo rapido per dire "installa tutte le rimanenti" o "salta tutte le rimanenti".
+**Problem:** During interactive installation of optional dependencies, the user has to answer Y/n for each one. There is no quick way to say "install all the rest" or "skip all the rest".
 
-**Fix:** Aggiungere alla funzione `_ask()` il supporto per le risposte `a` (all — installa questa e tutte le successive) e `s` (skip all — salta questa e tutte le successive). Quando l'utente risponde `a`, impostare `ALL=1` così i prompt successivi vengono auto-accettati. Quando risponde `s`, impostare un flag `SKIP_ALL=1` che fa ritornare 1 per tutti i prompt successivi. Aggiornare il prompt da `[Y/n]` a `[Y/n/a/s]`.
+**Fix:** Add support to the `_ask()` function for the answers `a` (all — install this and all the following) and `s` (skip all — skip this and all the following). When the user answers `a`, set `ALL=1` so the following prompts get auto-accepted. When they answer `s`, set a `SKIP_ALL=1` flag that makes all subsequent prompts return 1. Update the prompt from `[Y/n]` to `[Y/n/a/s]`.
 
 **Tasks:**
-- [x] M15a: Aggiungere flag SKIP_ALL e logica a/s nella funzione `_ask()`
-- [x] M15b: Aggiornare il prompt e il messaggio iniziale per mostrare le nuove opzioni
+- [x] M15a: Add SKIP_ALL flag and a/s logic to the `_ask()` function
+- [x] M15b: Update the prompt and the initial message to show the new options
 
 ---
 
-## M16: Tasto R — resume ultima sessione assistant ✅
+## M16: R key — resume last assistant session ✅
 
-**Problema:** Quando l'utente esce da un assistant e torna al menu, non c'è modo rapido di tornare alla sessione precedente. Tutti e 4 i tool supportano il resume ma con flag/comandi diversi.
+**Problem:** When the user exits an assistant and returns to the menu, there is no quick way to go back to the previous session. All four tools support resume but with different flags/commands.
 
 **Resume per tool:**
 - aider: `aider --yes-always --restore-chat-history`
 - claude: `claude --dangerously-skip-permissions --continue`
 - opencode: `opencode --continue`
-- codex: `codex resume --last` (subcomando, non flag — sovrascrive cmd+args)
+- codex: `codex resume --last` (subcommand, not a flag — overrides cmd+args)
 
 **Fix:**
-1. Aggiungere array `resume_args` parallelo a `launch_args` con i flag di resume per ogni tool
-2. Per codex, gestione speciale: il resume usa un subcomando diverso (`codex resume --last`) invece di aggiungere un flag
-3. Tracciare `_last_tool` (indice dell'ultimo tool lanciato) dopo ogni lancio
-4. Aggiungere tasto `r`/`R` nel loop input che lancia `_launch_tool` in modalità resume
-5. Modificare `_launch_tool` per accettare un flag `--resume` che appende i resume_args (o usa il comando speciale per codex)
-6. Mostrare `r resume` nella riga di help solo quando `_last_tool` è impostato
-7. Nella riga del timer, aggiungere il nome del tool per dare contesto: `⏱  last session: aider · 12m 34s`
+1. Add a `resume_args` array parallel to `launch_args` with the resume flags for each tool
+2. For codex, special handling: resume uses a different subcommand (`codex resume --last`) instead of appending a flag
+3. Track `_last_tool` (index of the last launched tool) after every launch
+4. Add an `r`/`R` key in the input loop that runs `_launch_tool` in resume mode
+5. Modify `_launch_tool` to accept a `--resume` flag that appends `resume_args` (or uses the special command for codex)
+6. Show `r resume` in the help line only when `_last_tool` is set
+7. In the timer line, add the tool name for context: `⏱  last session: aider · 12m 34s`
 
 **Tasks:**
-- [x] M16a: Aggiungere array `resume_args` e variabile `_last_tool`
-- [x] M16b: Modificare `_launch_tool` per supportare modalità resume
-- [x] M16c: Aggiungere tasto R nel loop input + aggiornare help line
-- [x] M16d: Mostrare nome tool nella riga timer
+- [x] M16a: Add `resume_args` array and `_last_tool` variable
+- [x] M16b: Modify `_launch_tool` to support resume mode
+- [x] M16c: Add the R key in the input loop + update the help line
+- [x] M16d: Show the tool name in the timer line
 
 ---
 
-## M17: UX — help line più chiara + lettere bold ✅
+## M17: UX — clearer help line + bold letters ✅
 
-**Problema:** La riga di help `↑↓/1-4 select · enter launch · c toggle · r resume · q quit` non è abbastanza chiara. "toggle" non dice cosa toggli, "resume" non dice cosa riprendi. Inoltre le lettere shortcut non si distinguono dal testo descrittivo.
+**Problem:** The help line `↑↓/1-4 select · enter launch · c toggle · r resume · q quit` is not clear enough. "toggle" does not say what you are toggling, "resume" does not say what you are resuming. Also, the shortcut letters do not stand out from the descriptive text.
 
 **Fix:**
-1. **Label più descrittive:**
+1. **More descriptive labels:**
    - `c toggle` → `c toggle awake mode`
    - `r resume` → `r resume last session`
-2. **Lettere shortcut in grassetto** (ANSI `\033[1m`): tutte le lettere/tasti nella help line (`↑↓/1-4`, `enter`, `c`, `r`, `q`) vengono wrappate con `${B}...${X}${D}` per risaltare in bold rispetto al testo dim circostante
-3. **Timer line — hint per resume:** aggiungere `— press r to resume` alla fine della riga `⏱  last session: ...`, con la `r` in bold
+2. **Bold shortcut letters** (ANSI `\033[1m`): all letters/keys in the help line (`↑↓/1-4`, `enter`, `c`, `r`, `q`) get wrapped with `${B}...${X}${D}` so they stand out in bold against the surrounding dim text
+3. **Timer line — resume hint:** append `— press r to resume` to the end of the `⏱  last session: ...` line, with the `r` in bold
 
 **Tasks:**
-- [x] M17a: Aggiornare help line con label descrittive e lettere bold
-- [x] M17b: Aggiungere hint "press r to resume" alla riga timer con r bold
+- [x] M17a: Update the help line with descriptive labels and bold letters
+- [x] M17b: Add the "press r to resume" hint to the timer line with `r` in bold
 
 ---
 
-## M18: Rinomina `claudecode` → `claude` + ordine alfabetico + descrizioni omogenee ✅
+## M18: Rename `claudecode` → `claude` + alphabetical order + homogeneous descriptions ✅
 
-**Problema:** Tre cose insieme:
-1. Il comando si chiama `claudecode` ma il binario reale è `claude` — incoerente.
-2. Gli assistant nel menu non sono in ordine alfabetico (`aider`, `claudecode`, `opencode`, `codex`).
-3. Le descrizioni a fianco non sono omogenee: `aider` descrive la funzione (`AI pair programmer`), gli altri tre solo il vendor (`Anthropic`, `SST`, `OpenAI`).
+**Problem:** Three things at once:
+1. The command is called `claudecode` but the actual binary is `claude` — inconsistent.
+2. The assistants in the menu are not in alphabetical order (`aider`, `claudecode`, `opencode`, `codex`).
+3. The descriptions next to them are not homogeneous: `aider` describes the function (`AI pair programmer`), the other three only the vendor (`Anthropic`, `SST`, `OpenAI`).
 
 **Fix:**
 
-1. **Rinomina `claudecode` → `claude`** in tutti i file:
+1. **Rename `claudecode` → `claude`** in all files:
    - `crazycode.sh`: `items` array, `get_color` case, `_print_help`, `_crazycode_completions`
-   - `README.md`: tabella comandi, esempio CLI (`crazycode claude`), screenshot ASCII del menu
-   - `DEVPLAN.md`: aggiornare solo riferimenti testuali storici (M1 e M2), non riscrivere milestone chiuse
+   - `README.md`: command table, CLI example (`crazycode claude`), ASCII menu screenshot
+   - `DEVPLAN.md`: only update historical textual references (M1 and M2), do not rewrite closed milestones
 
-2. **Ordine alfabetico:** `aider` → `claude` → `codex` → `opencode`. Riordinare in parallelo gli array `items`, `cmds`, `descriptions`, `launch_args`, `resume_args` per mantenere l'allineamento per indice. Le shortcut numeriche `[1-4]` si rimappano automaticamente (claude=2, codex=3, opencode=4).
+2. **Alphabetical order:** `aider` → `claude` → `codex` → `opencode`. Reorder the `items`, `cmds`, `descriptions`, `launch_args`, `resume_args` arrays in parallel to keep the per-index alignment. The `[1-4]` numeric shortcuts remap automatically (claude=2, codex=3, opencode=4).
 
-3. **Descrizioni omogenee — opzione vendor secco:**
+3. **Homogeneous descriptions — plain vendor option:**
    ```
    aider     Paul Gauthier
    claude    Anthropic
@@ -438,7 +438,19 @@ README.md
    ```
 
 **Tasks:**
-- [x] M18a: Riordinare gli array in `crazycode.sh` (items/cmds/descriptions/launch_args/resume_args) e aggiornare `get_color`, `_print_help`, `_crazycode_completions` con il nuovo nome `claude`
-- [x] M18b: Aggiornare descrizione di `aider` da `AI pair programmer` a `Paul Gauthier`
-- [x] M18c: Aggiornare `README.md` (tabella comandi, esempio CLI, screenshot ASCII del menu) con nuovo nome e nuovo ordine
-- [x] M18d: Aggiornare riferimenti testuali a `claudecode` in `DEVPLAN.md` (solo M1/M2, senza riscrivere le milestone chiuse)
+- [x] M18a: Reorder the arrays in `crazycode.sh` (items/cmds/descriptions/launch_args/resume_args) and update `get_color`, `_print_help`, `_crazycode_completions` with the new `claude` name
+- [x] M18b: Update `aider`'s description from `AI pair programmer` to `Paul Gauthier`
+- [x] M18c: Update `README.md` (command table, CLI example, ASCII menu screenshot) with the new name and order
+- [x] M18d: Update textual references to `claudecode` in `DEVPLAN.md` (only M1/M2, without rewriting closed milestones)
+
+---
+
+## M19: Translate `DEVPLAN.md` to English ✅
+
+**Problem:** Per the global rule in `~/.claude/CLAUDE.md` ("Artifacts are always in English unless explicitly asked otherwise"), all project artifacts must be in English. `DEVPLAN.md` was historically written in Italian (M1 through M18), violating that rule.
+
+**Fix:** Translate the entire `DEVPLAN.md` (M1 through M18) to English in a single rewrite. Preserve all milestone IDs, statuses (`✅`), task checkboxes, code blocks, and structure verbatim. Only natural-language prose gets translated.
+
+**Tasks:**
+- [x] M19a: Translate M1–M18 prose, headings, and task descriptions to English
+- [x] M19b: Verify code blocks, command examples, and milestone IDs remain unchanged
