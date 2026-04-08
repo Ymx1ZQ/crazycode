@@ -9,20 +9,20 @@ _crazycode_main() {
   local BC='\033[1;36m'  # bold cyan
   local BW='\033[1;37m'  # bold white
 
-  local items=("aider" "claudecode" "opencode" "codex")
-  local cmds=("aider" "claude" "opencode" "codex")
-  local descriptions=("AI pair programmer" "Anthropic" "SST" "OpenAI")
+  local items=("aider" "claude" "codex" "opencode")
+  local cmds=("aider" "claude" "codex" "opencode")
+  local descriptions=("Paul Gauthier" "Anthropic" "OpenAI" "SST")
   local launch_args=(
     "--yes-always"
     "--dangerously-skip-permissions"
-    ""
     "--sandbox danger-full-access --ask-for-approval never"
+    ""
   )
   local resume_args=(
     "--restore-chat-history"
     "--continue"
-    "--continue"
     ""  # codex uses subcommand, handled in _launch_tool
+    "--continue"
   )
   local num_items=${#items[@]}
   local selected=0
@@ -134,10 +134,10 @@ _crazycode_main() {
   # ── drawing helpers ──────────────────────────────────────────────
   get_color() {
     case "$1" in
-      aider)      printf "%s" "$BR" ;;
-      claudecode) printf "%s" "$BC" ;;
-      opencode)   printf "%s" "$BW" ;;
-      codex)      printf "%s" "$BY" ;;
+      aider)    printf "%s" "$BR" ;;
+      claude)   printf "%s" "$BC" ;;
+      codex)    printf "%s" "$BY" ;;
+      opencode) printf "%s" "$BW" ;;
       *)          printf "%s" "$D" ;;
     esac
   }
@@ -217,10 +217,10 @@ _crazycode_main() {
     printf "\n  ${BR}${B}⚡  CRAZYCODE${X}  ${D}— AI coding launcher${X}\n\n"
     printf "  ${BW}Usage:${X}  crazycode [command] [args...]\n\n"
     printf "  ${BW}Commands:${X}\n"
-    printf "    ${BR}aider${X}          Launch aider (--yes-always)\n"
-    printf "    ${BC}claudecode${X}     Launch Claude Code (--dangerously-skip-permissions)\n"
-    printf "    ${BW}opencode${X}       Launch opencode\n"
-    printf "    ${BY}codex${X}          Launch codex (--sandbox danger-full-access)\n"
+    printf "    ${BR}aider${X}      Launch aider (--yes-always)\n"
+    printf "    ${BC}claude${X}     Launch Claude Code (--dangerously-skip-permissions)\n"
+    printf "    ${BY}codex${X}      Launch codex (--sandbox danger-full-access)\n"
+    printf "    ${BW}opencode${X}   Launch opencode\n"
     printf "    ${BG}coffeeshot${X}     Toggle awake mode on/off\n"
     printf "    ${D}status${X}         Show awake mode status\n\n"
     printf "  ${D}Run without arguments to open the interactive TUI.${X}\n\n"
@@ -427,7 +427,7 @@ _crazycode_main() {
 # ── bash completion ──────────────────────────────────────────────────
 _crazycode_completions() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  COMPREPLY=( $(compgen -W "aider claudecode opencode codex coffeeshot status --help" -- "$cur") )
+  COMPREPLY=( $(compgen -W "aider claude codex opencode coffeeshot status --help" -- "$cur") )
 }
 # NOTE: completion words match items array + extra commands; update if items change
 complete -F _crazycode_completions crazycode

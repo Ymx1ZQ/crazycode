@@ -52,7 +52,7 @@ README.md
   ├── Cosa fa — tabella con ogni opzione del menu
   │     coffeeshot: tiene lo schermo acceso (usa caffeine-indicator)
   │     nosleep:    blocca suspend/hibernate via systemd
-  │     aider / claudecode / opencode / codex: launcher AI
+  │     aider / claude / codex / opencode: launcher AI
   ├── Installazione manuale (alternativa al quickinstall)
   └── Requisiti
 ```
@@ -168,16 +168,16 @@ README.md
 
 **Subcomandi:**
 - `crazycode aider` → lancia aider direttamente
-- `crazycode claudecode` → lancia claude code direttamente
-- `crazycode opencode` → lancia opencode direttamente
+- `crazycode claude` → lancia claude code direttamente
 - `crazycode codex` → lancia codex direttamente
+- `crazycode opencode` → lancia opencode direttamente
 - `crazycode coffeeshot` → attiva awake mode (toggle on/off)
 - `crazycode status` → mostra stato awake mode senza TUI
 - `crazycode --help` → mostra usage con lista comandi
 
 **Autocomplete bash:**
 - Funzione `_crazycode_completions` registrata con `complete -F`
-- Completa i subcomandi: `aider claudecode opencode codex coffeeshot status --help`
+- Completa i subcomandi: `aider claude codex opencode coffeeshot status --help`
 - La registrazione va nel file sorgato (`crazycode.sh`) così è attiva appena caricato
 
 **Installer:**
@@ -410,3 +410,35 @@ README.md
 **Tasks:**
 - [x] M17a: Aggiornare help line con label descrittive e lettere bold
 - [x] M17b: Aggiungere hint "press r to resume" alla riga timer con r bold
+
+---
+
+## M18: Rinomina `claudecode` → `claude` + ordine alfabetico + descrizioni omogenee ✅
+
+**Problema:** Tre cose insieme:
+1. Il comando si chiama `claudecode` ma il binario reale è `claude` — incoerente.
+2. Gli assistant nel menu non sono in ordine alfabetico (`aider`, `claudecode`, `opencode`, `codex`).
+3. Le descrizioni a fianco non sono omogenee: `aider` descrive la funzione (`AI pair programmer`), gli altri tre solo il vendor (`Anthropic`, `SST`, `OpenAI`).
+
+**Fix:**
+
+1. **Rinomina `claudecode` → `claude`** in tutti i file:
+   - `crazycode.sh`: `items` array, `get_color` case, `_print_help`, `_crazycode_completions`
+   - `README.md`: tabella comandi, esempio CLI (`crazycode claude`), screenshot ASCII del menu
+   - `DEVPLAN.md`: aggiornare solo riferimenti testuali storici (M1 e M2), non riscrivere milestone chiuse
+
+2. **Ordine alfabetico:** `aider` → `claude` → `codex` → `opencode`. Riordinare in parallelo gli array `items`, `cmds`, `descriptions`, `launch_args`, `resume_args` per mantenere l'allineamento per indice. Le shortcut numeriche `[1-4]` si rimappano automaticamente (claude=2, codex=3, opencode=4).
+
+3. **Descrizioni omogenee — opzione vendor secco:**
+   ```
+   aider     Paul Gauthier
+   claude    Anthropic
+   codex     OpenAI
+   opencode  SST
+   ```
+
+**Tasks:**
+- [x] M18a: Riordinare gli array in `crazycode.sh` (items/cmds/descriptions/launch_args/resume_args) e aggiornare `get_color`, `_print_help`, `_crazycode_completions` con il nuovo nome `claude`
+- [x] M18b: Aggiornare descrizione di `aider` da `AI pair programmer` a `Paul Gauthier`
+- [x] M18c: Aggiornare `README.md` (tabella comandi, esempio CLI, screenshot ASCII del menu) con nuovo nome e nuovo ordine
+- [x] M18d: Aggiornare riferimenti testuali a `claudecode` in `DEVPLAN.md` (solo M1/M2, senza riscrivere le milestone chiuse)

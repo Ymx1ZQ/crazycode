@@ -7,10 +7,10 @@ A terminal launcher for AI coding tools — with a full awake-mode toggle that k
   ~/code/my-project
   ⎇  main ●
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ▶ aider           AI pair programmer  ✓
-  2 claudecode      Anthropic           ✓
-  3 opencode        SST                 ✗
-  4 codex           OpenAI              ✓
+  ▶ aider           Paul Gauthier       ✓
+  2 claude          Anthropic           ✓
+  3 codex           OpenAI              ✓
+  4 opencode        SST                 ✗
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [c] coffeeshot ☕     [awake mode off]
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -41,10 +41,10 @@ Flags: `--all` (install everything, no prompts), `--silent` (errors only).
 
 | Option | What it does |
 |--------|-------------|
-| **aider** | Opens [aider](https://aider.chat) — AI pair programmer in the terminal (`--yes-always`) |
-| **claudecode** | Opens [Claude Code](https://claude.ai/code) — Anthropic's official AI CLI (`--dangerously-skip-permissions`) |
-| **opencode** | Opens [opencode](https://github.com/sst/opencode) — AI coding tool by SST |
+| **aider** | Opens [aider](https://aider.chat) — AI pair programmer by Paul Gauthier (`--yes-always`) |
+| **claude** | Opens [Claude Code](https://claude.ai/code) — Anthropic's official AI CLI (`--dangerously-skip-permissions`) |
 | **codex** | Opens [Codex](https://github.com/openai/codex) — OpenAI's AI coding CLI (`--sandbox danger-full-access`) |
+| **opencode** | Opens [opencode](https://github.com/sst/opencode) — AI coding tool by SST |
 | **coffeeshot** `[c]` | Awake mode — keeps the PC fully alive: masks sleep/suspend/hibernate, disables DPMS & screensaver, ignores lid switch, disables screen lock |
 | **camomile** `[c]` | Restores normal power management (toggle coffeeshot off) |
 
@@ -56,7 +56,7 @@ Launch tools directly without the TUI:
 
 ```bash
 crazycode aider          # launch aider directly
-crazycode claudecode     # launch claude code directly
+crazycode claude         # launch claude code directly
 crazycode coffeeshot     # toggle awake mode on/off
 crazycode status         # show awake mode status
 crazycode --help         # show all commands
