@@ -491,3 +491,30 @@ README.md
 - [x] M20b: Add `gemini cli` block to `install.sh` (`_ask` + `_install_npm_tool` + `_track`)
 - [x] M20c: Update `README.md` table, ASCII demo (5 entries, renumbered), and any `1-4` references
 - [x] M20d: Sanity-check with `bash -n crazycode.sh` and `bash -n install.sh`
+
+---
+
+## M21: Installer — alphabetical order + caffeine separated from assistants ✅
+
+**Problem:** Two issues in `install.sh`:
+1. The optional-tool prompts are not in alphabetical order: current order is `caffeine → aider → claude code → opencode → codex → gemini cli`. M18 already enforced alphabetical order in the TUI (`aider · claude · codex · gemini · opencode`); the installer should mirror it.
+2. `caffeine` is not an AI assistant — it's a dependency of awake mode. Lumping it in the same prompt sequence as the assistants is misleading.
+
+**Fix:**
+
+1. **Split into two sub-sections inside phase 2**, each with its own `_section` header:
+   - `Awake mode dependencies` → `caffeine`
+   - `AI assistants` → `aider`, `claude code`, `codex`, `gemini cli`, `opencode` (alphabetical)
+
+2. **Reorder the AI-assistant blocks** to alphabetical: `aider → claude code → codex → gemini cli → opencode`. The `_ask` / `_install_*` / `_track` triplets move together to keep their logic intact.
+
+3. The `_ask` shortcuts `a` (install all) and `s` (skip all) keep working across sub-sections — they set process-wide flags (`ALL`, `SKIP_ALL`), so the visual split is purely cosmetic.
+
+**Tasks:**
+- [x] M21a: Add an `_section "Awake mode dependencies"` header before the `caffeine` block
+- [x] M21b: Add an `_section "AI assistants"` header before the assistant blocks
+- [x] M21c: Reorder assistant blocks alphabetically: `aider → claude code → codex → gemini cli → opencode`
+- [x] M21d: Static-analysis test (`tests/test_install_order.sh`) verifying section headers + tool order
+- [x] M21e: Sanity-check with `bash -n install.sh`
+
+**Notes:** Replaced the outer `_section "Optional tools"` with the two new sub-section headers — the outer label was redundant once the phase had explicit sub-sections. The `Y install · n skip ...` legend stays gated behind the interactive guard with a leading `\n` for spacing (it used to follow `_section "Optional tools"` which provided the newline).

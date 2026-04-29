@@ -132,16 +132,19 @@ fi
 
 # ─── phase 2: optional tools ──────────────────────────────────────────────────
 
-_section "Optional tools"
 if [[ $ALL -eq 0 && $SILENT -eq 0 ]]; then
-  echo -e "  ${D}Y install  ·  n skip  ·  a install all  ·  s skip all${X}"
+  echo -e "\n  ${D}Y install  ·  n skip  ·  a install all  ·  s skip all${X}"
 fi
+
+_section "Awake mode dependencies"
 
 if _ask "caffeine" "keeps the screen on — prevents display sleep (apt)"; then
   sudo apt install -y caffeine
   _ok "caffeine installed"
 fi
 _track "caffeine" "caffeine-indicator"
+
+_section "AI assistants"
 
 if _ask "aider" "AI pair programmer in the terminal (pipx install aider-chat)"; then
   if _ensure_pipx; then
@@ -159,11 +162,6 @@ if _ask "claude code" "Anthropic's official AI CLI (curl installer)"; then
 fi
 _track "claude code" "claude"
 
-if _ask "opencode" "AI coding tool by SST (npm i -g opencode-ai@latest)"; then
-  _install_npm_tool "opencode" "opencode-ai@latest"
-fi
-_track "opencode" "opencode"
-
 if _ask "codex" "OpenAI's AI coding CLI (npm i -g @openai/codex)"; then
   _install_npm_tool "codex" "@openai/codex"
 fi
@@ -173,6 +171,11 @@ if _ask "gemini cli" "Google's AI coding CLI (npm i -g @google/gemini-cli)"; the
   _install_npm_tool "gemini" "@google/gemini-cli"
 fi
 _track "gemini" "gemini"
+
+if _ask "opencode" "AI coding tool by SST (npm i -g opencode-ai@latest)"; then
+  _install_npm_tool "opencode" "opencode-ai@latest"
+fi
+_track "opencode" "opencode"
 
 # ─── summary ─────────────────────────────────────────────────────────────────
 
