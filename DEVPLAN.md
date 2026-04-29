@@ -454,3 +454,40 @@ README.md
 **Tasks:**
 - [x] M19a: Translate M1–M18 prose, headings, and task descriptions to English
 - [x] M19b: Verify code blocks, command examples, and milestone IDs remain unchanged
+
+---
+
+## M20: Add `gemini` (Google Gemini CLI) as a launcher option ✅
+
+**Goal:** Add Google's Gemini CLI alongside the existing four assistants, so the menu becomes `aider · claude · codex · gemini · opencode` (alphabetical order, per M18 convention).
+
+**Tool details:**
+- Binary: `gemini`
+- npm package: `@google/gemini-cli`
+- Auto-approve flag: `--yolo` (skips confirmations, consistent with the project's "all tools launch without asking permission" stance)
+- Resume: no native session-restore flag — leave `resume_args` empty (the `r` key will simply re-launch, same behavior as `opencode` had pre-resume support)
+- Vendor description: `Google` (homogeneous with the M18 vendor-only style)
+
+**Changes:**
+
+1. **`crazycode.sh`:**
+   - Insert `gemini` into `items`, `cmds`, `descriptions` (`Google`), `launch_args` (`--yolo`), `resume_args` (`""`) at index 3 (between `codex` and `opencode`) to preserve alphabetical order.
+   - Add a `gemini` case in `get_color()` — use bold blue (`\033[1;34m`, new local `BB`) since red/cyan/yellow/white are taken.
+   - Extend the numeric-shortcut handler from `[1-4]` to `[1-5]` so the new 5th item is reachable.
+   - Add `gemini` to `_print_help()` output (between `codex` and `opencode`).
+   - Add `gemini` to the `compgen -W` list in `_crazycode_completions()`.
+   - The `num_items` variable is already derived from `${#items[@]}`, so layout/help/footer rows recompute automatically.
+
+2. **`install.sh`:**
+   - Add a new `_ask "gemini cli" "Google's AI coding CLI (npm i -g @google/gemini-cli)"` block, calling `_install_npm_tool "gemini" "@google/gemini-cli"` and `_track "gemini" "gemini"`. Place it between the `codex` and `opencode` blocks (alphabetical by tool name) — or at the end if order in the installer is purely chronological; check current style.
+
+3. **`README.md`:**
+   - Add a `gemini` row to the "What each option does" table (between `codex` and `opencode`).
+   - Update the ASCII demo block to show 5 entries instead of 4 (renumbering `opencode` from `4` to `5`).
+   - Update the CLI usage example list and the help-line key hint (`↑↓/1-4` → `↑↓/1-5`).
+
+**Tasks:**
+- [x] M20a: Update `crazycode.sh` arrays (`items`/`cmds`/`descriptions`/`launch_args`/`resume_args`), `get_color`, `_print_help`, `_crazycode_completions`, and the numeric-key range
+- [x] M20b: Add `gemini cli` block to `install.sh` (`_ask` + `_install_npm_tool` + `_track`)
+- [x] M20c: Update `README.md` table, ASCII demo (5 entries, renumbered), and any `1-4` references
+- [x] M20d: Sanity-check with `bash -n crazycode.sh` and `bash -n install.sh`

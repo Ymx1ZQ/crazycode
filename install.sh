@@ -169,6 +169,11 @@ if _ask "codex" "OpenAI's AI coding CLI (npm i -g @openai/codex)"; then
 fi
 _track "codex" "codex"
 
+if _ask "gemini cli" "Google's AI coding CLI (npm i -g @google/gemini-cli)"; then
+  _install_npm_tool "gemini" "@google/gemini-cli"
+fi
+_track "gemini" "gemini"
+
 # ─── summary ─────────────────────────────────────────────────────────────────
 
 if [[ $SILENT -eq 0 ]]; then

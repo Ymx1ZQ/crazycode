@@ -10,11 +10,12 @@ A terminal launcher for AI coding tools — with a full awake-mode toggle that k
   ▶ aider           Paul Gauthier       ✓
   2 claude          Anthropic           ✓
   3 codex           OpenAI              ✓
-  4 opencode        SST                 ✗
+  4 gemini          Google              ✓
+  5 opencode        SST                 ✗
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [c] coffeeshot ☕     [awake mode off]
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ↑↓/1-4 select  ·  enter launch  ·  c toggle  ·  r resume  ·  q quit
+  ↑↓/1-5 select  ·  enter launch  ·  c toggle  ·  r resume  ·  q quit
   ⏱  last session: aider · 12m 34s
   ⚠  all tools launch without asking permission
 ```
@@ -44,6 +45,7 @@ Flags: `--all` (install everything, no prompts), `--silent` (errors only).
 | **aider** | Opens [aider](https://aider.chat) — AI pair programmer by Paul Gauthier (`--yes-always`) |
 | **claude** | Opens [Claude Code](https://claude.ai/code) — Anthropic's official AI CLI (`--dangerously-skip-permissions`) |
 | **codex** | Opens [Codex](https://github.com/openai/codex) — OpenAI's AI coding CLI (`--sandbox danger-full-access`) |
+| **gemini** | Opens [Gemini CLI](https://github.com/google-gemini/gemini-cli) — Google's AI coding CLI (`--yolo`) |
 | **opencode** | Opens [opencode](https://github.com/sst/opencode) — AI coding tool by SST |
 | **coffeeshot** `[c]` | Awake mode — keeps the PC fully alive: masks sleep/suspend/hibernate, disables DPMS & screensaver, ignores lid switch, disables screen lock |
 | **camomile** `[c]` | Restores normal power management (toggle coffeeshot off) |
