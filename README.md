@@ -74,6 +74,10 @@ echo 'crazycode() { source ~/.crazycode/crazycode.sh && _crazycode_main "$@"; }'
 source ~/.bashrc
 ```
 
+### From an existing clone
+
+If you've already cloned the repo, run `./install.sh` directly — it detects the local checkout and installs from it (no network), then re-points `origin` to the canonical GitHub URL so future updates work normally.
+
 ## Requirements
 
 - bash 4+

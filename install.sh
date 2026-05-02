@@ -95,14 +95,34 @@ if ! _has git; then
 fi
 
 CRAZYCODE_DIR="$HOME/.crazycode"
+CRAZYCODE_REMOTE="https://github.com/Ymx1ZQ/crazycode.git"
+
+# Detect a local checkout: BASH_SOURCE[0] must be a real file whose directory
+# is the toplevel of a git repo and contains crazycode.sh. When piped via
+# `curl … | bash`, BASH_SOURCE[0] is typically "main" (not a file), so the
+# check fails and the install falls through to the GitHub clone path.
+LOCAL_SRC=""
+if [[ -f "${BASH_SOURCE[0]:-}" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
+  if [[ -n "$SCRIPT_DIR" \
+        && -f "$SCRIPT_DIR/crazycode.sh" \
+        && "$SCRIPT_DIR" != "$CRAZYCODE_DIR" \
+        && "$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" == "$SCRIPT_DIR" ]]; then
+    LOCAL_SRC="$SCRIPT_DIR"
+  fi
+fi
 
 if [ -d "$CRAZYCODE_DIR/.git" ]; then
   _info "~/.crazycode already exists — updating..."
   git -C "$CRAZYCODE_DIR" fetch --quiet
   git -C "$CRAZYCODE_DIR" reset --hard "@{u}" >/dev/null 2>&1
+elif [ -n "$LOCAL_SRC" ]; then
+  _info "Installing from local checkout at $LOCAL_SRC..."
+  git clone --quiet "$LOCAL_SRC" "$CRAZYCODE_DIR"
+  git -C "$CRAZYCODE_DIR" remote set-url origin "$CRAZYCODE_REMOTE"
 else
-  _info "Cloning crazycode into ~/.crazycode..."
-  git clone https://github.com/Ymx1ZQ/crazycode.git "$CRAZYCODE_DIR"
+  _info "Cloning crazycode from github.com/Ymx1ZQ/crazycode..."
+  git clone "$CRAZYCODE_REMOTE" "$CRAZYCODE_DIR"
 fi
 _ok "crazycode installed"
 

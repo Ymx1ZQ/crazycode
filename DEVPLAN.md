@@ -582,4 +582,52 @@ We tag the inhibitor with a unique `--who=crazycode-awake` so detection is exact
 ### Notes
 - `setsid … </dev/null` detaches the inhibitor from the controlling terminal so it survives the parent shell's lifecycle within the toggle session, but a unique `--who` tag guarantees `pkill` only matches our process on toggle-off.
 - The `is_awake` 4-of-4 semantics are preserved (mask · idle inhibitor · lid ignored · lock disabled). What changes is just the implementation of the second layer; the user-visible "4/4" still means the same four guarantees.
-- Out of scope: the `sleep_masked` and `lid_ignored` layers could in principle also be folded into a single `systemd-inhibit --what=idle:sleep:handle-lid-switch`, but that reshapes the current "permanent setting" approach (mask units, edit `logind.conf`) into a process-scoped one. Left as a possible future M23.
+- Out of scope: the `sleep_masked` and `lid_ignored` layers could in principle also be folded into a single `systemd-inhibit --what=idle:sleep:handle-lid-switch`, but that reshapes the current "permanent setting" approach (mask units, edit `logind.conf`) into a process-scoped one. Left as a possible future milestone.
+
+---
+
+## M23: Installer — use local checkout instead of cloning from GitHub when available ✅
+
+**Problem:** `install.sh` always runs `git clone https://github.com/Ymx1ZQ/crazycode.git "$CRAZYCODE_DIR"` (line 105), even when the user executes the script from their own local clone of the repo. This is wasteful (re-fetches what's already on disk), requires network access to GitHub, and means a contributor testing committed local changes can't do an end-to-end install of their work via the installer without first pushing to GitHub.
+
+**Fix:** Detect whether `install.sh` is being run from inside a local clone of the crazycode repo and, if so, use that clone as the source for `$CRAZYCODE_DIR` instead of cloning from GitHub. Preserve the canonical GitHub remote so future `git fetch` updates continue to work normally.
+
+**Detection logic:**
+
+1. Resolve the script's own directory:
+   ```bash
+   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
+   ```
+2. Treat the script as running from a local checkout iff **all** of the following hold:
+   - `SCRIPT_DIR` is non-empty
+   - `[ -f "$SCRIPT_DIR/install.sh" ] && [ -f "$SCRIPT_DIR/crazycode.sh" ]` — sanity-check that the directory actually looks like a crazycode checkout (not just any random git repo that happens to host an `install.sh`)
+   - `git -C "$SCRIPT_DIR" rev-parse --show-toplevel` succeeds and its output equals `$SCRIPT_DIR` (script lives at the repo toplevel)
+   - `SCRIPT_DIR` is not equal to `$CRAZYCODE_DIR` itself (avoid cloning the destination onto itself in the fresh-install path)
+
+When `install.sh` is piped through `curl … | bash`, `BASH_SOURCE[0]` resolves to something like `/dev/stdin` or `/dev/fd/63`; the sanity-check `[ -f "$SCRIPT_DIR/crazycode.sh" ]` fails and the logic falls through to the GitHub-clone path. (Verify in M23d.)
+
+**Install logic when local checkout is detected:**
+
+- If `$CRAZYCODE_DIR/.git` already exists (existing install): unchanged path — `git fetch && reset --hard @{u}` against the already-configured remote (typically GitHub). Local detection only affects the *fresh* install.
+- If `$CRAZYCODE_DIR` does not exist:
+  - `git clone "$SCRIPT_DIR" "$CRAZYCODE_DIR"` — uses hardlinks under the hood, near-instant, no network.
+  - `git -C "$CRAZYCODE_DIR" remote set-url origin https://github.com/Ymx1ZQ/crazycode.git` so future `git pull`s go to GitHub, not back to the developer's working tree.
+  - Print an `_info` line: `installed from local checkout at <SCRIPT_DIR>`.
+
+In the GitHub fall-through path, also print an `_info` line so the source is always visible: `cloning from github.com/Ymx1ZQ/crazycode`.
+
+**Out of scope (deliberate):**
+
+- Picking up uncommitted changes from the local checkout. `git clone <local-path>` copies committed state only; uncommitted edits in the working tree are not transferred. A contributor who wants to test uncommitted work should commit first (or use the dev checkout directly without going through the installer). Adding rsync-of-working-tree behavior would change the contract of "the installer gives you a clean, repo-backed `~/.crazycode`" and is left for a future milestone if the need surfaces.
+- `--local` / `--remote` override flags. Auto-detection should be unambiguous; flags add API surface for a need that doesn't yet exist.
+
+**Tasks:**
+- [x] M23a: Add `SCRIPT_DIR` resolution and the local-checkout detection (toplevel git repo + `crazycode.sh` sanity check + self-clone guard) to `install.sh`
+- [x] M23b: Branch the `git clone` step on detection — clone from `"$LOCAL_SRC"` and re-point `origin` to the GitHub URL when local; clone from GitHub otherwise
+- [x] M23c: Add `_info` lines indicating the source used (local path vs GitHub) on both branches
+- [x] M23d: Add a static-analysis test (`tests/test_install_local_checkout.sh`) verifying that `install.sh` contains the detection guards (`BASH_SOURCE`, `crazycode.sh` sanity check, `remote set-url`) — covers the invariant without needing to actually run the installer
+- [x] M23e: Sanity-check with `bash -n install.sh`; runtime-verified both branches in a sandbox (local-checkout from `./install.sh` and curl-pipe fall-through via stdin)
+
+### Notes
+- During implementation, surfaced a real bug in the initial draft: when piped via `curl … | bash`, `BASH_SOURCE[0]` is "main" (not a file path) and `dirname` defaults to `.`, leaking the caller's cwd as a false-positive "local checkout" if cwd happened to be a checkout itself. Fix: gate the resolution on `[[ -f "${BASH_SOURCE[0]:-}" ]]` so non-file invocations short-circuit to the GitHub path. Caught by the runtime sandbox, not the static-analysis test — the static test remains useful as a regression net but cannot replace exercising the actual code path.
+- Final variable name is `LOCAL_SRC` (not `SCRIPT_DIR` as drafted) — `SCRIPT_DIR` is a transient holding the resolved path; `LOCAL_SRC` is the validated "this is a usable crazycode checkout" tag, set only when all guards pass.
