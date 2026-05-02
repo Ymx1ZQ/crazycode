@@ -33,20 +33,15 @@ _crazycode_main() {
   local _last_tool=-1
 
   # ── awake mode state ──────────────────────────────────────────────
-  local sleep_masked=0 caffeine_on=0 lid_ignored=0 lock_disabled=0
+  local sleep_masked=0 idle_inhibited=0 lid_ignored=0 lock_disabled=0
 
   check_sleep() {
     systemctl is-enabled sleep.target 2>/dev/null | grep -q masked && sleep_masked=1 || sleep_masked=0
   }
 
-  check_caffeine() {
-    caffeine_on=0
-    pgrep -f caffeine-indicator >/dev/null 2>&1 && caffeine_on=1
-    if command -v xset &>/dev/null && [ -n "$DISPLAY" ]; then
-      local dpms_status
-      dpms_status=$(xset q 2>/dev/null | grep -i "DPMS is" | tr -d '[:space:]')
-      [[ "${dpms_status,,}" == *"disabled"* ]] && caffeine_on=1
-    fi
+  check_idle_inhibit() {
+    idle_inhibited=0
+    systemd-inhibit --list --no-pager 2>/dev/null | grep -q crazycode-awake && idle_inhibited=1
   }
 
   check_lid() {
@@ -72,28 +67,23 @@ _crazycode_main() {
 
   check_awake() {
     check_sleep
-    check_caffeine
+    check_idle_inhibit
     check_lid
     check_lock
   }
 
   is_awake() {
-    [[ $sleep_masked -eq 1 && $caffeine_on -eq 1 && $lid_ignored -eq 1 && $lock_disabled -eq 1 ]]
+    [[ $sleep_masked -eq 1 && $idle_inhibited -eq 1 && $lid_ignored -eq 1 && $lock_disabled -eq 1 ]]
   }
 
   enable_awake() {
     sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1
 
-    if ! command -v caffeine-indicator &>/dev/null; then
-      sudo apt install -y caffeine >/dev/null 2>&1
-    fi
-    if ! pgrep -f caffeine-indicator >/dev/null 2>&1; then
-      caffeine-indicator >/dev/null 2>&1 &
+    if ! systemd-inhibit --list --no-pager 2>/dev/null | grep -q crazycode-awake; then
+      setsid systemd-inhibit --what=idle --who=crazycode-awake \
+        --why="crazycode awake mode" --mode=block sleep infinity \
+        </dev/null >/dev/null 2>&1 &
       disown
-    fi
-
-    if command -v xset &>/dev/null && [ -n "$DISPLAY" ]; then
-      xset s off -dpms 2>/dev/null
     fi
 
     sudo sed -i 's/^#\?HandleLidSwitch=.*/HandleLidSwitch=ignore/' /etc/systemd/logind.conf 2>/dev/null
@@ -114,11 +104,8 @@ _crazycode_main() {
 
   disable_awake() {
     sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1
+    pkill -f 'systemd-inhibit.*crazycode-awake' 2>/dev/null
     pkill -f caffeine-indicator 2>/dev/null
-
-    if command -v xset &>/dev/null && [ -n "$DISPLAY" ]; then
-      xset s on +dpms 2>/dev/null
-    fi
 
     sudo sed -i 's/^#\?HandleLidSwitch=.*/HandleLidSwitch=suspend/' /etc/systemd/logind.conf 2>/dev/null
     sudo systemctl kill -s HUP systemd-logind 2>/dev/null
@@ -149,7 +136,7 @@ _crazycode_main() {
   awake_count() {
     _awake_count=0
     [[ $sleep_masked -eq 1 ]] && ((_awake_count++))
-    [[ $caffeine_on -eq 1 ]] && ((_awake_count++))
+    [[ $idle_inhibited -eq 1 ]] && ((_awake_count++))
     [[ $lid_ignored -eq 1 ]] && ((_awake_count++))
     [[ $lock_disabled -eq 1 ]] && ((_awake_count++))
   }
@@ -206,7 +193,7 @@ _crazycode_main() {
     printf "\n  ${BW}${B}awake mode status${X}\n"
     printf "  ───────────────────────────\n"
     printf "  sleep masked:    %b\n" "$( [[ $sleep_masked -eq 1 ]] && echo "$on" || echo "$off" )"
-    printf "  caffeine/dpms:   %b\n" "$( [[ $caffeine_on -eq 1 ]] && echo "$on" || echo "$off" )"
+    printf "  idle inhibitor:  %b\n" "$( [[ $idle_inhibited -eq 1 ]] && echo "$on" || echo "$off" )"
     printf "  lid ignored:     %b\n" "$( [[ $lid_ignored -eq 1 ]] && echo "$on" || echo "$off" )"
     printf "  lock disabled:   %b\n" "$( [[ $lock_disabled -eq 1 ]] && echo "$on" || echo "$off" )"
     printf "  ───────────────────────────\n"

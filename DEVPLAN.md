@@ -518,3 +518,68 @@ README.md
 - [x] M21e: Sanity-check with `bash -n install.sh`
 
 **Notes:** Replaced the outer `_section "Optional tools"` with the two new sub-section headers — the outer label was redundant once the phase had explicit sub-sections. The `Y install · n skip ...` legend stays gated behind the interactive guard with a leading `\n` for spacing (it used to follow `_section "Optional tools"` which provided the newline).
+
+---
+
+## M22: Replace `caffeine` with `systemd-inhibit` for the idle layer of awake mode ✅
+
+**Problem:** The current "caffeine" layer of awake mode is unreliable and produces a misleading 4/4 status:
+
+- `enable_awake` only launches `caffeine-indicator` (the AppIndicator tray icon). The Ubuntu `caffeine` package starts the indicator in **OFF** state — the actual inhibitor (`/usr/bin/caffeine`, a Python wrapper around `gnome-session-inhibit`/xdotool) is only spawned when the user clicks the tray icon. So the icon appears, but no idle-inhibition is in effect.
+- `check_caffeine` declares success based on `pgrep -f caffeine-indicator`, treating the presence of the indicator process as proof of inhibition. The TUI confidently shows 4/4 while the display is free to blank/sleep.
+- The `xset DPMS` fallback in `check_caffeine` is dead code on Wayland (the rooted X server reports "Server does not have the DPMS Extension"), and `xset s off -dpms` in `enable_awake` is equally a no-op there.
+- The caffeine package's actual inhibitor depends on either xdotool keep-alive (broken on Wayland) or `gnome-session-inhibit` — making the whole layer indirect and fragile.
+
+**Fix — switch to `systemd-inhibit --what=idle` as the single, authoritative idle inhibitor.** It is:
+
+- Provided by systemd, which is already a hard prerequisite (we use `systemctl mask sleep.target` in the same function). No extra package.
+- Honored by GNOME, KDE, and any logind-aware compositor on both X11 and Wayland — the desktop session itself queries `logind` for idle-inhibitors and skips idle/blank when one is held.
+- Detectable authoritatively via `systemd-inhibit --list` (the OS is the source of truth, not a tray icon's process state).
+- Process-scoped: if `crazycode` dies, the inhibitor is released automatically — the correct fail-safe behavior for a TUI toggle.
+
+We tag the inhibitor with a unique `--who=crazycode-awake` so detection is exact and we never collide with other apps' inhibitors.
+
+### Changes
+
+1. **`crazycode.sh`:**
+   - Rename state variable `caffeine_on` → `idle_inhibited` and function `check_caffeine` → `check_idle_inhibit` (used in `is_awake`, `awake_count`, and `get_awake_line`).
+   - `check_idle_inhibit`: parse `systemd-inhibit --list --no-pager 2>/dev/null` and set `idle_inhibited=1` iff a row contains the `crazycode-awake` tag. Drop the `xset` fallback entirely.
+   - `enable_awake`: replace the caffeine-indicator launch block with:
+     ```bash
+     if ! systemd-inhibit --list --no-pager 2>/dev/null | grep -q crazycode-awake; then
+       setsid systemd-inhibit --what=idle --who=crazycode-awake \
+         --why="crazycode awake mode" --mode=block sleep infinity \
+         </dev/null >/dev/null 2>&1 &
+       disown
+     fi
+     ```
+     Drop the `xset s off -dpms` line. Remove the `command -v caffeine-indicator` / `apt install -y caffeine` block — no longer needed.
+   - `disable_awake`: replace `pkill -f caffeine-indicator 2>/dev/null` with `pkill -f 'systemd-inhibit.*crazycode-awake' 2>/dev/null`. Drop the `xset s on +dpms` line. Add a one-shot `pkill -f caffeine-indicator 2>/dev/null` to clean up any legacy tray icons left behind by pre-M22 runs.
+   - TUI labels: change the status row label `caffeine/dpms` → `idle inhibitor` in `_print_help`/`get_awake_line` (or wherever rendered).
+
+2. **`install.sh`:**
+   - Remove the `_section "Awake mode dependencies"` header and the `caffeine` `_ask` / `apt install` / `_track` block (lines 141–145). `systemd-inhibit` ships with systemd; nothing to install.
+   - With caffeine gone, the only remaining sub-section is `AI assistants`. Promote that single header back to a plain `_section "Optional AI assistants"` (or drop the sub-section split entirely and revert to the pre-M21 single `_section`) — pick whichever reads cleaner; the goal is no orphaned single-child section.
+
+3. **`tests/`:**
+   - Delete `tests/test_install_order.sh` (its assertions about `Awake mode dependencies` and the `caffeine` block are no longer applicable).
+   - Add `tests/test_awake_inhibitor.sh` (static analysis, no root needed):
+     - `crazycode.sh` contains `systemd-inhibit --what=idle` and the literal tag `crazycode-awake`.
+     - `crazycode.sh` no longer references `caffeine-indicator` except inside the legacy-cleanup `pkill` line.
+     - `install.sh` does not contain `apt install -y caffeine` nor any `_ask "caffeine"` block.
+
+4. **`README.md`:**
+   - Line 50: drop "disables DPMS" from the coffeeshot description; replace with "holds a systemd idle-inhibitor".
+   - Line 81: remove the caffeine prerequisite bullet.
+
+### Tasks
+- [x] M22a: `crazycode.sh` — rename `caffeine_on`→`idle_inhibited`, `check_caffeine`→`check_idle_inhibit`; rewrite `enable_awake`/`disable_awake`/`check_idle_inhibit` to use `systemd-inhibit`; update TUI label to `idle inhibitor`
+- [x] M22b: `install.sh` — remove `_section "Awake mode dependencies"` and the `caffeine` block; collapse the remaining single sub-section into `_section "Optional AI assistants"`
+- [x] M22c: Replace `tests/test_install_order.sh` with `tests/test_awake_inhibitor.sh` covering the new invariants
+- [x] M22d: `README.md` — update awake-mode description and remove the `caffeine` prerequisite line
+- [x] M22e: Sanity-check with `bash -n crazycode.sh && bash -n install.sh` and run `tests/test_awake_inhibitor.sh` (green); live-verified inhibitor spawn/list/kill on this Wayland session
+
+### Notes
+- `setsid … </dev/null` detaches the inhibitor from the controlling terminal so it survives the parent shell's lifecycle within the toggle session, but a unique `--who` tag guarantees `pkill` only matches our process on toggle-off.
+- The `is_awake` 4-of-4 semantics are preserved (mask · idle inhibitor · lid ignored · lock disabled). What changes is just the implementation of the second layer; the user-visible "4/4" still means the same four guarantees.
+- Out of scope: the `sleep_masked` and `lid_ignored` layers could in principle also be folded into a single `systemd-inhibit --what=idle:sleep:handle-lid-switch`, but that reshapes the current "permanent setting" approach (mask units, edit `logind.conf`) into a process-scoped one. Left as a possible future M23.

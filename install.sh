@@ -136,15 +136,7 @@ if [[ $ALL -eq 0 && $SILENT -eq 0 ]]; then
   echo -e "\n  ${D}Y install  ·  n skip  ·  a install all  ·  s skip all${X}"
 fi
 
-_section "Awake mode dependencies"
-
-if _ask "caffeine" "keeps the screen on — prevents display sleep (apt)"; then
-  sudo apt install -y caffeine
-  _ok "caffeine installed"
-fi
-_track "caffeine" "caffeine-indicator"
-
-_section "AI assistants"
+_section "Optional AI assistants"
 
 if _ask "aider" "AI pair programmer in the terminal (pipx install aider-chat)"; then
   if _ensure_pipx; then
