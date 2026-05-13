@@ -179,6 +179,11 @@ if _ask "codex" "OpenAI's AI coding CLI (npm i -g @openai/codex)"; then
 fi
 _track "codex" "codex"
 
+if _ask "forge" "Tailcall's AI coding CLI (npm i -g @antinomyhq/forge)"; then
+  _install_npm_tool "forge" "@antinomyhq/forge"
+fi
+_track "forge" "forge"
+
 if _ask "gemini cli" "Google's AI coding CLI (npm i -g @google/gemini-cli)"; then
   _install_npm_tool "gemini" "@google/gemini-cli"
 fi
