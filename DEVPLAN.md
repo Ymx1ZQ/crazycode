@@ -634,7 +634,7 @@ In the GitHub fall-through path, also print an `_info` line so the source is alw
 
 ---
 
-## M24: Add `forge` (Tailcall ForgeCode) as a launcher option
+## M24: Add `forge` (Tailcall ForgeCode) as a launcher option ✅
 
 **Goal:** Add ForgeCode — the post-leak, Apache-2.0, Rust-native coding agent from Tailcall Inc. that currently leads Terminal-Bench 2.0 (#2 with GPT-5.4 at 81.8%, #4 with Claude Opus 4.6 at 79.8%) — as the 6th launcher in crazycode. ForgeCode is the candidate runtime evaluated for replacing Claude Code in the sibling the production project project (see the production project `devplan/v0.x.md` M10), and crazycode is the surface used to exercise it side-by-side with the other assistants. Final menu order (alphabetical, per M18 convention): `aider · claude · codex · forge · gemini · opencode`.
 
@@ -669,11 +669,11 @@ In the GitHub fall-through path, also print an `_info` line so the source is alw
    - Add `tests/test_forge_launcher.sh` (static analysis) covering: (a) `forge` appears in the `items` and `cmds` arrays in `crazycode.sh`; (b) `_launch_tool` exports `FORGE_TRACKER=0` for the `forge` index; (c) `install.sh` has an `_ask "forge"` block calling `_install_npm_tool "forge" "@antinomyhq/forge"`; (d) `README.md` mentions `forge` and `FORGE_TRACKER=0` in the tools table.
 
 **Tasks:**
-- [ ] M24a: Update `crazycode.sh` arrays (`items`/`cmds`/`descriptions`/`launch_args`/`resume_args`), `get_color`, `_print_help`, `_crazycode_completions`, numeric-key range `[1-6]`, and the `FORGE_TRACKER=0` export in `_launch_tool`
-- [ ] M24b: Add `forge` block to `install.sh` (`_ask` + `_install_npm_tool` + `_track`), between `codex` and `gemini cli`
-- [ ] M24c: Update `README.md` table, ASCII demo (6 entries, renumbered), and `1-5` → `1-6` references
-- [ ] M24d: Add `tests/test_forge_launcher.sh` static-analysis check
-- [ ] M24e: Sanity-check with `bash -n crazycode.sh && bash -n install.sh` and run `tests/test_forge_launcher.sh` (green)
+- [x] M24a: Update `crazycode.sh` arrays (`items`/`cmds`/`descriptions`/`launch_args`/`resume_args`), `get_color`, `_print_help`, `_crazycode_completions`, numeric-key range `[1-6]`, and the `FORGE_TRACKER=0` export in `_launch_tool`
+- [x] M24b: Add `forge` block to `install.sh` (`_ask` + `_install_npm_tool` + `_track`), between `codex` and `gemini cli`
+- [x] M24c: Update `README.md` table, ASCII demo (6 entries, renumbered), and `1-5` → `1-6` references
+- [x] M24d: Add `tests/test_forge_launcher.sh` static-analysis check
+- [x] M24e: Sanity-check with `bash -n crazycode.sh && bash -n install.sh` and run `tests/test_forge_launcher.sh` (green)
 
 ### Notes
 - Telemetry default: keeping `FORGE_TRACKER=0` per-launch rather than as a one-shot install-time env mutation avoids leaking into other shells and is reversible per-invocation. The trade-off is mild redundancy in the script; the upside is that the default is auditable in one place (`_launch_tool`) regardless of how the user updates ForgeCode later.
