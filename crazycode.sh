@@ -11,15 +11,16 @@ _crazycode_main() {
   local BC='\033[1;36m'  # bold cyan
   local BW='\033[1;37m'  # bold white
 
-  local items=("aider" "claude" "codex" "forge" "gemini" "opencode")
-  local cmds=("aider" "claude" "codex" "forge" "gemini" "opencode")
-  local descriptions=("Paul Gauthier" "Anthropic" "OpenAI" "Tailcall" "Google" "SST")
+  local items=("aider" "claude" "codex" "forge" "gemini" "goose" "opencode")
+  local cmds=("aider" "claude" "codex" "forge" "gemini" "goose" "opencode")
+  local descriptions=("Paul Gauthier" "Anthropic" "OpenAI" "Tailcall" "Google" "AAIF" "SST")
   local launch_args=(
     "--yes-always"
     "--dangerously-skip-permissions"
     "--sandbox danger-full-access --ask-for-approval never"
     ""
     "--yolo"
+    ""
     ""
   )
   local resume_args=(
@@ -28,6 +29,7 @@ _crazycode_main() {
     ""  # codex uses subcommand, handled in _launch_tool
     ""  # forge resume needs an explicit conversation-id, no --last shortcut
     ""  # gemini has no native resume flag
+    "session --resume"
     "--continue"
   )
   local num_items=${#items[@]}
@@ -132,6 +134,7 @@ _crazycode_main() {
       codex)    printf "%s" "$BY" ;;
       forge)    printf "%s" "$BM" ;;
       gemini)   printf "%s" "$BB" ;;
+      goose)    printf "%s" "$BG" ;;
       opencode) printf "%s" "$BW" ;;
       *)          printf "%s" "$D" ;;
     esac
@@ -178,9 +181,14 @@ _crazycode_main() {
     # forge: telemetry defaults to ON and processes events on US infrastructure
     # (Tailcall DPA in preparation, May 2026). Opt-out by default; users who
     # want telemetry on can `unset FORGE_TRACKER` in their shell after launch.
+    # goose: GOOSE_MODE defaults to smart_approve (interactive confirmations).
+    # Override to `auto` to match crazycode's "all tools launch without asking
+    # permission" stance — same role as --yes-always/--yolo for the others.
     local env_prefix=""
     if [[ "$tool" == "forge" ]]; then
       env_prefix="FORGE_TRACKER=0"
+    elif [[ "$tool" == "goose" ]]; then
+      env_prefix="GOOSE_MODE=auto"
     fi
 
     if [[ $resume -eq 1 ]]; then
@@ -226,6 +234,7 @@ _crazycode_main() {
     printf "    ${BY}codex${X}      Launch codex (--sandbox danger-full-access)\n"
     printf "    ${BM}forge${X}      Launch ForgeCode (FORGE_TRACKER=0 set by default)\n"
     printf "    ${BB}gemini${X}     Launch Gemini CLI (--yolo)\n"
+    printf "    ${BG}goose${X}      Launch Goose (GOOSE_MODE=auto set by default)\n"
     printf "    ${BW}opencode${X}   Launch opencode\n"
     printf "    ${BG}coffeeshot${X}     Toggle awake mode on/off\n"
     printf "    ${D}status${X}         Show awake mode status\n\n"
@@ -330,7 +339,7 @@ _crazycode_main() {
     printf "\033[$((hdr + num_items + 1));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
     draw_awake
     printf "\033[$((hdr + num_items + 3));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
-    local help_line="${B}↑↓/1-6${X}${D} select  ·  ${X}${B}enter${X}${D} launch  ·  ${X}${B}c${X}${D} toggle awake mode"
+    local help_line="${B}↑↓/1-7${X}${D} select  ·  ${X}${B}enter${X}${D} launch  ·  ${X}${B}c${X}${D} toggle awake mode"
     [[ $_last_tool -ge 0 ]] && help_line+="  ·  ${X}${B}r${X}${D} resume last session"
     help_line+="  ·  ${X}${B}q${X}${D} quit${X}"
     printf "\033[$((hdr + num_items + 4));1H  ${D}${help_line}\n"
@@ -398,7 +407,7 @@ _crazycode_main() {
             break
           fi
           ;;
-        [1-6])
+        [1-7])
           local num_idx=$((key - 1))
           if [[ $num_idx -lt $num_items ]]; then
             selected=$num_idx
@@ -433,7 +442,7 @@ _crazycode_main() {
 # ── bash completion ──────────────────────────────────────────────────
 _crazycode_completions() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  COMPREPLY=( $(compgen -W "aider claude codex forge gemini opencode coffeeshot status --help" -- "$cur") )
+  COMPREPLY=( $(compgen -W "aider claude codex forge gemini goose opencode coffeeshot status --help" -- "$cur") )
 }
 # NOTE: completion words match items array + extra commands; update if items change
 complete -F _crazycode_completions crazycode

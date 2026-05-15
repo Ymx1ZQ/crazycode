@@ -189,6 +189,15 @@ if _ask "gemini cli" "Google's AI coding CLI (npm i -g @google/gemini-cli)"; the
 fi
 _track "gemini" "gemini"
 
+if _ask "goose" "AAIF's open-source AI agent (curl installer, no sudo)"; then
+  # CONFIGURE=false skips the upstream installer's interactive `goose configure`
+  # prompt — otherwise install.sh --all and the `s` skip-all flow would hang.
+  # Users run `goose configure` themselves on first launch to set up provider/model.
+  CONFIGURE=false curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash
+  _ok "goose installed"
+fi
+_track "goose" "goose"
+
 if _ask "opencode" "AI coding tool by SST (npm i -g opencode-ai@latest)"; then
   _install_npm_tool "opencode" "opencode-ai@latest"
 fi

@@ -678,3 +678,105 @@ In the GitHub fall-through path, also print an `_info` line so the source is alw
 ### Notes
 - Telemetry default: keeping `FORGE_TRACKER=0` per-launch rather than as a one-shot install-time env mutation avoids leaking into other shells and is reversible per-invocation. The trade-off is mild redundancy in the script; the upside is that the default is auditable in one place (`_launch_tool`) regardless of how the user updates ForgeCode later.
 - Out of scope: a `--with-telemetry` flag to opt back in via crazycode, and any deeper ForgeCode configuration (model selection, `FORGE_CONFIG`). Users who need those configure them via ForgeCode's own mechanism — crazycode is a launcher, not a config manager.
+
+---
+
+## M25: Add `goose` (AAIF Goose CLI) as a launcher option ✅
+
+**Goal:** Add Goose — the open-source, extensible AI agent recently transferred from Block to the **Agentic AI Foundation (AAIF)** under the Linux Foundation — as the 7th launcher in crazycode. Goose's CLI executes shell tools, edits files, and runs tests against any LLM provider; it complements the existing six by being the only entry that is (a) provider-agnostic by design and (b) governed by a foundation rather than a single vendor. Final menu order (alphabetical, per M18 convention): `aider · claude · codex · forge · gemini · goose · opencode`.
+
+**Tool details:**
+- Binary: `goose`
+- Installer: `curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash` (no sudo; installs to `$HOME/.local/bin` by default — same path family pipx uses for `aider`, so no new PATH handling is needed beyond what already exists). The script auto-runs `goose configure` (interactive) on completion unless `CONFIGURE=false` is set — we **must** set it to keep `install.sh --all`/`s`(skip-all) non-interactive. Users configure their LLM provider later by running `goose configure` themselves.
+- Auto-approve: env var `GOOSE_MODE=auto` (other values: `approve` / `smart_approve` / `chat`). `auto` is the fully-autonomous mode — coherent with crazycode's "all tools launch without asking permission" stance (line 5 of the menu footer, added in M5). Same pattern as `FORGE_TRACKER=0` in M24: per-launch env export inside `_launch_tool`, no global shell mutation.
+- Resume: native `goose session --resume` (long form) / `goose session -r` (short form). Without `--name`/`--session-id` it resumes "the most recently used session" (verified against `crates/goose-cli/src/cli.rs` in `aaif-goose/goose@main`, lines 845–847). This makes `goose` the second launcher (after `codex`) where resume requires a **subcommand override** rather than appending a flag — reuse the existing codex-style branch in `_launch_tool` (introduced in M16) rather than threading a new mechanism. `resume_args` for goose carries `session --resume`.
+- Vendor description: `AAIF` (homogeneous with `SST` / `Google` / `OpenAI` / `Tailcall`; the full name "Agentic AI Foundation @ Linux Foundation" is 30 characters wide and would break the menu column alignment — acronym is the right trade-off here).
+
+**Changes:**
+
+1. **`crazycode.sh`:**
+   - Insert `goose` into `items`, `cmds`, `descriptions` (`AAIF`), `launch_args` (`""` — the auto-approve is via env var, not CLI flag), `resume_args` (`session --resume`) at index 5 (between `gemini` at 4 and `opencode` which moves from 5 → 6). All five parallel arrays shift in sync.
+   - Add a `goose` case in `get_color()` — use **bold green** (`\033[1;32m`, new local `BG`); red/cyan/yellow/white/bold-blue (gemini)/bold-magenta (forge) are taken by the other six.
+   - Extend the numeric-shortcut handler from `[1-6]` to `[1-7]` so the new 7th item (`opencode`, now at index 6 → key `7`) remains reachable.
+   - In `_launch_tool`, mirror the M24 forge pattern: before invoking `goose`, export `GOOSE_MODE=auto` (per-call, scoped to that exec). Implementation: extend the existing case-match keyed on tool name — `forge` got its `FORGE_TRACKER=0` export there, `goose` slots in alongside it. Keep both exports local; do not refactor into a shared "env" array (premature abstraction for two cases).
+   - Resume path: extend the existing codex-style subcommand-override branch in `_launch_tool` to also cover `goose` (the override is `goose session --resume`, populated from `resume_args`). M16 already established the override mechanism — we are adding a second tool that uses it, not creating a new path.
+   - Add `goose` to `_print_help()` output (between `gemini` and `opencode`) with a one-line note `(GOOSE_MODE=auto set by default)` to make the auto-approve default discoverable, in the same style as M24's `FORGE_TRACKER=0` line.
+   - Add `goose` to the `compgen -W` list in `_crazycode_completions()`.
+   - `num_items` derives from `${#items[@]}`, so layout rows recompute automatically; verify the footer rows still fit (gemini and forge each added +1 in M20/M24, structurally identical here).
+
+2. **`install.sh`:**
+   - Add a new `_ask "goose" "AAIF's open-source AI agent (curl installer, no sudo)"` block, between the `gemini cli` and `opencode` blocks (alphabetical order, matching M21 convention). Body:
+     ```bash
+     if _ask "goose" "AAIF's open-source AI agent (curl installer, no sudo)"; then
+       CONFIGURE=false curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash
+       _ok "goose installed"
+     fi
+     _track "goose" "goose"
+     ```
+   - `CONFIGURE=false` is **load-bearing**: without it the upstream script invokes `goose configure` interactively at the end, which would hang `install.sh --all` and break `s` (skip-all) flows by re-prompting the user mid-batch.
+   - No new helper function needed — the `claude code` block (line 171) already uses an inline `curl … | bash` pattern; we follow the same shape for consistency.
+   - `_track "goose" "goose"` uses `command -v goose`, which can return `fail` even after a successful install if `$HOME/.local/bin` is not in the installer subshell's `PATH`. This is a pre-existing limitation that already affects `aider` (pipx installs to the same path) and is **not** in scope for M25 — fixing it would require a separate milestone touching the `_track` helper. Document the caveat in the milestone notes.
+
+3. **`README.md`:**
+   - Add a `goose` row to the "What each option does" table (between `gemini` and `opencode`), with a parenthetical: `(GOOSE_MODE=auto set by default — fully autonomous tool execution)`.
+   - Update the ASCII demo block to show 7 entries instead of 6, renumbering `opencode` from `6` → `7`.
+   - Update the CLI usage example list to mention `crazycode goose` and the help-line key hint (`↑↓/1-6` → `↑↓/1-7`).
+
+4. **`tests/`:**
+   - Add `tests/test_goose_launcher.sh` (static analysis) covering:
+     - (a) `goose` appears in the `items` and `cmds` arrays in `crazycode.sh`;
+     - (b) `_launch_tool` exports `GOOSE_MODE=auto` for the `goose` index;
+     - (c) `resume_args` for `goose` contains `session --resume` and the subcommand-override branch in `_launch_tool` matches `goose` (regression net for the codex-style path reuse);
+     - (d) `install.sh` has an `_ask "goose"` block invoking `download_cli.sh` with `CONFIGURE=false` set;
+     - (e) `README.md` mentions `goose` and `GOOSE_MODE=auto` in the tools table.
+
+**Tasks:**
+- [x] M25a: Update `crazycode.sh` arrays (`items`/`cmds`/`descriptions`/`launch_args`/`resume_args`), `get_color`, `_print_help`, `_crazycode_completions`, numeric-key range `[1-7]`, the `GOOSE_MODE=auto` export in `_launch_tool` — goose resume uses the generic path with `resume_args="session --resume"` (no codex-style override needed since `launch_args` is empty)
+- [x] M25b: Add `goose` block to `install.sh` (`_ask` + inline `CONFIGURE=false curl | bash` + `_track`), between `gemini cli` and `opencode`
+- [x] M25c: Update `README.md` table, ASCII demo (7 entries, renumbered), and `1-6` → `1-7` references
+- [x] M25d: Add `tests/test_goose_launcher.sh` static-analysis check
+- [x] M25e: Sanity-check with `bash -n crazycode.sh && bash -n install.sh` and run `tests/test_goose_launcher.sh` (green). Also relaxed `tests/test_forge_launcher.sh`'s range assertions from literal `[1-6]` to `\[1-[4-9]\]` so M24's regression net survives future range bumps without needing to be rewritten each milestone
+
+### Notes
+- Repo provenance: `github.com/block/goose` redirects to `github.com/aaif-goose/goose` (45k stars, same SHA history). The transfer is the legitimate handover from Block to AAIF/Linux Foundation; this is the canonical Goose, not a fork. Using `aaif-goose/goose` directly in `download_cli.sh` URL future-proofs against the redirect being eventually removed.
+- `CONFIGURE=false` is the only deviation from "run the upstream installer verbatim". An alternative would be to pipe `yes "" |` into the configure prompt, but that depends on goose's interactive UX (multiple prompts, provider/model selection) and would silently pick a default LLM provider for the user — worse UX than letting them run `goose configure` once, intentionally, on first launch.
+- Out of scope: (1) auto-running `goose configure` on first crazycode launch of goose (would require state-tracking inside `crazycode.sh` and is fragile); (2) PATH-fixup for `$HOME/.local/bin` in `_track` (pre-existing limitation; deserves its own milestone — see M26); (3) provider/model pre-configuration via `GOOSE_PROVIDER`/`GOOSE_MODEL` env vars (crazycode is a launcher, not a config manager — same principle as M24's exclusion of `FORGE_CONFIG`).
+
+---
+
+## M26: Installer — fix `_track` false negatives when tools install to `$HOME/.local/bin`
+
+**Problem:** `install.sh`'s post-install verification (`_track`, introduced in M10a) calls `_has "$2"` which is `command -v $2 >/dev/null`. The installer subshell inherits the caller's `PATH` at invocation time and does not re-read the rc file mid-script — so if the user runs `install.sh` from a shell where `$HOME/.local/bin` is not yet in `PATH`, the summary table at the end will show `✗` for any tool installed there, **even when the install succeeded**. This affects:
+
+1. **`aider`** — pipx installs to `$HOME/.local/bin`. `_ensure_pipx` calls `pipx ensurepath` after installing pipx, which updates the user's rc file but **does not** mutate the current subshell's `PATH`. So a fresh-machine run where pipx itself was just installed → `_track "aider" "aider"` returns `fail` despite a successful `pipx install aider-chat`.
+2. **`goose`** (once M25 lands) — the upstream `download_cli.sh` installs to `$HOME/.local/bin` by default and explicitly tells the user to add the dir to PATH if it isn't already. Same `_track` false negative.
+
+The false negative is purely cosmetic — the tool works fine in any new shell the user opens — but it undermines the summary table's authority: an `✗` should mean "something is wrong", not "your PATH didn't reflect the install at script-time".
+
+**Fix — prepend `$HOME/.local/bin` to `PATH` once, at the start of phase 2, before the first `_ask`/`_track` cycle:**
+
+```bash
+# Phase 2 may install tools into $HOME/.local/bin (pipx, goose). pipx ensurepath
+# and goose's installer update the rc file but not this subshell — so prepend
+# the dir here so _track's command -v probe sees the binaries it just installed.
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Place the export **after** the `_section "Optional AI assistants"` header and **before** the first `_ask` block (currently `aider`, line 161). The prepend is idempotent — re-running the installer with the dir already on PATH is a no-op (same dir twice in PATH is harmless and the shell deduplicates on lookup).
+
+**Why prepend and not append:** if a system-wide stale binary exists in `/usr/local/bin` with the same name, prepending makes the freshly-user-installed one win in `command -v`. This matches what a properly-configured user PATH already does (since `pipx ensurepath` prepends, not appends).
+
+**Alternatives considered and rejected:**
+
+- **Fallback in `_has`**: change `_has` to also test `[ -x "$HOME/.local/bin/$1" ]`. Rejected: `_has` is used in multiple places (the `git`/`pipx`/`npm` prereq checks) where a fallback to `~/.local/bin` could mask real PATH misconfigurations. A magical fallback inside a 3-line helper is harder to audit than an explicit `export PATH` at a well-marked location.
+- **Per-tool path argument to `_track`**: `_track "goose" "goose" "$HOME/.local/bin/goose"`. Rejected: forces every tool entry to know its install path, adds noise, and creates a third place where `~/.local/bin` must be remembered (besides pipx config and goose's installer). The single `export PATH` covers all current and future user-local installers.
+- **Re-source the rc file mid-script**: `source "$RC_FILE"`. Rejected: rc files run user-defined code (aliases, prompt theming, network calls) that have no business executing inside an unattended installer subshell.
+
+**Tasks:**
+- [ ] M26a: Add the `export PATH="$HOME/.local/bin:$PATH"` line at the start of phase 2 in `install.sh`, with the explanatory comment block above it
+- [ ] M26b: Extend the existing `tests/test_install_local_checkout.sh` (or add a small new `tests/test_install_path_prepend.sh`) to assert: (i) `install.sh` contains the literal `export PATH="$HOME/.local/bin:$PATH"`, (ii) the export appears **before** the first `_ask` block (use line-number comparison) — guards against a future refactor accidentally moving it below the tool blocks
+- [ ] M26c: Sanity-check with `bash -n install.sh` and runtime-verify on a clean shell by unsetting `PATH` of `~/.local/bin` and running `./install.sh --all`: confirm the summary shows `✓` for aider and goose (assuming M25 has landed) instead of the previous false `✗`
+
+### Notes
+- M26 is independent of M25 in the strict sense — the aider false-negative existed before goose was added. But the goose addition raises the visibility (two `~/.local/bin` tools instead of one), which is why this milestone surfaced now rather than at M10a's introduction. Implementation order is flexible: M26 can land before or after M25; either ordering works since the export is harmless when no `~/.local/bin` tools are involved.
+- Out of scope: doing the same PATH-prepend at the top of `crazycode.sh` (the launcher). The launcher only runs interactively in the user's own shell where PATH is already set up correctly via the rc file. A defensive prepend there would be cargo-culting — only the installer subshell has the gap.

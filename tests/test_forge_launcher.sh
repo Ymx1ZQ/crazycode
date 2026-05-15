@@ -48,10 +48,10 @@ has_re 'forge.*FORGE_TRACKER=0' "$CRAZYCODE" \
   || fail "crazycode.sh _print_help must mention forge + FORGE_TRACKER=0 default"
 has_re 'compgen -W "[^"]*forge' "$CRAZYCODE" \
   || fail "crazycode.sh _crazycode_completions must include forge"
-has_re '\[1-6\]\)' "$CRAZYCODE" \
-  || fail "crazycode.sh numeric-key handler must cover [1-6]"
-has_re '↑↓/1-6' "$CRAZYCODE" \
-  || fail "crazycode.sh help line must say ↑↓/1-6"
+has_re '\[1-[4-9]\]\)' "$CRAZYCODE" \
+  || fail "crazycode.sh numeric-key handler must cover up to at least position 4 (forge)"
+has_re '↑↓/1-[4-9]' "$CRAZYCODE" \
+  || fail "crazycode.sh help line must include position 4 (forge) in the key range"
 
 # install.sh — forge install block
 has_re '_ask "forge"' "$INSTALL_SH" \
@@ -66,7 +66,7 @@ have '**forge**' "$README" \
   || fail "README.md must list **forge** in the tools table"
 have 'FORGE_TRACKER=0' "$README" \
   || fail "README.md must mention FORGE_TRACKER=0 default"
-has_re '↑↓/1-6' "$README" \
-  || fail "README.md must update the key hint to ↑↓/1-6"
+has_re '↑↓/1-[4-9]' "$README" \
+  || fail "README.md key hint must include position 4 (forge)"
 
 echo "PASS: M24 forge launcher wiring OK"
