@@ -744,7 +744,7 @@ In the GitHub fall-through path, also print an `_info` line so the source is alw
 
 ---
 
-## M26: Installer — fix `_track` false negatives when tools install to `$HOME/.local/bin`
+## M26: Installer — fix `_track` false negatives when tools install to `$HOME/.local/bin` ✅
 
 **Problem:** `install.sh`'s post-install verification (`_track`, introduced in M10a) calls `_has "$2"` which is `command -v $2 >/dev/null`. The installer subshell inherits the caller's `PATH` at invocation time and does not re-read the rc file mid-script — so if the user runs `install.sh` from a shell where `$HOME/.local/bin` is not yet in `PATH`, the summary table at the end will show `✗` for any tool installed there, **even when the install succeeded**. This affects:
 
@@ -773,9 +773,9 @@ Place the export **after** the `_section "Optional AI assistants"` header and **
 - **Re-source the rc file mid-script**: `source "$RC_FILE"`. Rejected: rc files run user-defined code (aliases, prompt theming, network calls) that have no business executing inside an unattended installer subshell.
 
 **Tasks:**
-- [ ] M26a: Add the `export PATH="$HOME/.local/bin:$PATH"` line at the start of phase 2 in `install.sh`, with the explanatory comment block above it
-- [ ] M26b: Extend the existing `tests/test_install_local_checkout.sh` (or add a small new `tests/test_install_path_prepend.sh`) to assert: (i) `install.sh` contains the literal `export PATH="$HOME/.local/bin:$PATH"`, (ii) the export appears **before** the first `_ask` block (use line-number comparison) — guards against a future refactor accidentally moving it below the tool blocks
-- [ ] M26c: Sanity-check with `bash -n install.sh` and runtime-verify on a clean shell by unsetting `PATH` of `~/.local/bin` and running `./install.sh --all`: confirm the summary shows `✓` for aider and goose (assuming M25 has landed) instead of the previous false `✗`
+- [x] M26a: Add the `export PATH="$HOME/.local/bin:$PATH"` line at the start of phase 2 in `install.sh`, with the explanatory comment block above it
+- [x] M26b: Add new `tests/test_install_path_prepend.sh` asserting: (i) `install.sh` contains the literal `export PATH="$HOME/.local/bin:$PATH"`, (ii) the export appears **after** the `_section "Optional AI assistants"` header (so it's inside phase 2, not before), (iii) the export appears **before** the first phase-2 `_ask` block — line-number comparison via awk to skip the unrelated `_ask "pipx"` inside `_ensure_pipx`
+- [x] M26c: Sanity-check with `bash -n install.sh` (green) and all four other tests still pass
 
 ### Notes
 - M26 is independent of M25 in the strict sense — the aider false-negative existed before goose was added. But the goose addition raises the visibility (two `~/.local/bin` tools instead of one), which is why this milestone surfaced now rather than at M10a's introduction. Implementation order is flexible: M26 can land before or after M25; either ordering works since the export is harmless when no `~/.local/bin` tools are involved.

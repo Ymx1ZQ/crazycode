@@ -158,6 +158,11 @@ fi
 
 _section "Optional AI assistants"
 
+# Phase 2 installs tools into $HOME/.local/bin (pipx for aider, download_cli.sh
+# for goose). Both update the user's rc file but not this subshell — prepend
+# the dir here so _track's command -v probe sees freshly-installed binaries.
+export PATH="$HOME/.local/bin:$PATH"
+
 if _ask "aider" "AI pair programmer in the terminal (pipx install aider-chat)"; then
   if _ensure_pipx; then
     pipx install aider-chat
