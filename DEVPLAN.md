@@ -780,3 +780,49 @@ Place the export **after** the `_section "Optional AI assistants"` header and **
 ### Notes
 - M26 is independent of M25 in the strict sense — the aider false-negative existed before goose was added. But the goose addition raises the visibility (two `~/.local/bin` tools instead of one), which is why this milestone surfaced now rather than at M10a's introduction. Implementation order is flexible: M26 can land before or after M25; either ordering works since the export is harmless when no `~/.local/bin` tools are involved.
 - Out of scope: doing the same PATH-prepend at the top of `crazycode.sh` (the launcher). The launcher only runs interactively in the user's own shell where PATH is already set up correctly via the rc file. A defensive prepend there would be cargo-culting — only the installer subshell has the gap.
+
+---
+
+## M27: Launcher — drain stray terminal input after a child tool exits ✅
+
+**Problem:** When a child TUI (`opencode`, `claude`, `gemini`, …) exits, it leaves bytes in the terminal's input buffer. During shutdown these TUIs query the terminal — *cursor-position report* (DSR), *primary device attributes* (DA1), etc. — and the terminal's **responses** (escape sequences such as `\x1b[33;3R` or `\x1b[?64;1;…c`) land in stdin **after** the child has already exited.
+
+crazycode's TUI loop then returns to its input loop (`crazycode.sh:359`) and `read -rsn1 key` (`crazycode.sh:365`) consumes those leftover bytes as if they were keystrokes:
+
+1. `ESC` + 2 chars is eaten as a (failed) arrow-key parse (`crazycode.sh:368-369`);
+2. the digits remaining in the response fall through to the numeric-key case `[1-7]` (`crazycode.sh:410-416`);
+3. a stray `3` → `num_idx=2` → `selected=2` → **codex launches by itself**.
+
+Observed symptom: quitting `opencode` immediately re-opens `codex` (or another tool, depending on the exact response bytes). `stty sane` at `crazycode.sh:429` restores terminal modes but does **not** flush the pending input buffer.
+
+**Fix — drain pending input after the child exits, before the menu redraws:**
+
+Right after `stty sane 2>/dev/null` (`crazycode.sh:429`), discard everything still buffered:
+
+```bash
+# Drain stray input the child TUI left behind. Terminal query responses
+# (cursor-position / device-attributes reports) arrive after the child has
+# exited; without this the menu's read loop consumes them as keystrokes —
+# a stray digit launches whatever tool maps to it (e.g. opencode → codex).
+local _drain
+while read -rsn1 -t 0.05 _drain; do :; done
+```
+
+Each `read` consumes one buffered byte instantly; once the buffer is empty the final `read` blocks for the 50 ms timeout and exits the loop. 50 ms is generous for query responses (they return within milliseconds) and imperceptible to the user.
+
+**Why this placement:** the drain belongs in the TUI loop only, after a child returns. CLI mode (`crazycode opencode`) runs one tool and exits the process — no menu loop to protect. crazycode's own startup needs no drain (no child has run yet).
+
+**Alternatives considered and rejected:**
+
+- **Suppress the terminal queries** (e.g. wrap the child so it can't probe the terminal): impossible — the queries come from inside each third-party TUI; crazycode cannot patch them.
+- **`stty` flush / `tcflush`**: bash has no portable `tcflush`, and `stty` has no portable "flush input" action. The timed-`read` drain is the standard, portable bash idiom.
+- **Drain at the top of the input loop instead**: same effect, but draining once right after the child exits is clearer and keeps the hot input loop free of a per-iteration cost.
+
+**Tasks:**
+- [x] M27a: Add the timed-`read` drain loop (with the comment block above) immediately after `stty sane 2>/dev/null` in the TUI loop of `crazycode.sh`
+- [x] M27b: Add `tests/test_input_drain.sh` (static analysis) asserting (i) `crazycode.sh` contains a `while read -rsn1 -t <timeout> …` drain loop, (ii) it appears after the `stty sane` line (i.e. inside the TUI loop, post-child)
+- [x] M27c: Sanity-check with `bash -n crazycode.sh` and run the full `tests/` suite green
+
+### Notes
+- Root cause is generic to all child TUIs, not opencode-specific — `opencode → codex` is just the most reproducible pairing because opencode emits a query whose response contains a `3` as the first standalone digit. The fix covers every tool.
+- Out of scope: draining inside `_launch_tool` for CLI mode (the process exits right after, nothing reads the buffer).

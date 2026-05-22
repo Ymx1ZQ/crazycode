@@ -427,6 +427,12 @@ _crazycode_main() {
     _launch_tool "$selected" "$_resume" "$@"
     _last_tool=$selected
     stty sane 2>/dev/null
+    # Drain stray input the child TUI left behind. Terminal query responses
+    # (cursor-position / device-attributes reports) arrive after the child has
+    # exited; without this the menu's read loop consumes them as keystrokes —
+    # a stray digit launches whatever tool maps to it (e.g. opencode → codex).
+    local _drain
+    while read -rsn1 -t 0.05 _drain; do :; done
     local _elapsed=$(( SECONDS - _t0 ))
     local _m=$(( _elapsed / 60 )) _s=$(( _elapsed % 60 ))
     if [[ $_m -gt 0 ]]; then
