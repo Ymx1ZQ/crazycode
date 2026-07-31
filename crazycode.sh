@@ -174,9 +174,12 @@ _crazycode_main() {
     fi
   }
 
+  # _launch_tool <idx> <resume 0|1> [args passed through to the tool...]
+  # Both leading arguments are mandatory: a caller that omits `resume` makes the
+  # user's first argument bind to it, where `shift 2` then eats it.
   _launch_tool() {
-    local idx=$1 resume=${2:-0}
-    shift 2 2>/dev/null || shift
+    local idx=$1 resume=$2
+    shift 2
     local tool="${items[$idx]}"
     local cmd="${cmds[$idx]}"
     local color
@@ -205,7 +208,9 @@ _crazycode_main() {
       env_prefix="GOOSE_MODE=auto"
     fi
 
-    if [[ $resume -eq 1 ]]; then
+    # String comparison, not `-eq`: `[[ x -eq 1 ]]` evaluates x as an arithmetic
+    # expression, and bash performs command substitution while doing so.
+    if [[ "$resume" == "1" ]]; then
       printf "\n  ${color}${B}Resuming ${tool}...${X}\n"
       [[ -n "${resume_hints[$idx]}" ]] && printf "  ${D}${resume_hints[$idx]}${X}\n"
       printf "\n"
@@ -273,7 +278,10 @@ _crazycode_main() {
     shift
     local idx
     if idx=$(_find_tool_index "$subcmd"); then
-      _launch_tool "$idx" "$@"
+      # `0` is the resume flag; everything after it belongs to the tool.
+      # Resuming from the CLI needs no subcommand of its own — the tool's own
+      # flag forwards straight through (`crazycode claude --resume`).
+      _launch_tool "$idx" 0 "$@"
       return $?
     fi
     case "$subcmd" in

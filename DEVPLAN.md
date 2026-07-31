@@ -881,3 +881,49 @@ Facts behind the "none" rows: `gemini --resume` with no value coerces the empty 
 ### Notes
 - Out of scope: a resume path for CLI mode (`crazycode claude resume`). Related but separate: CLI mode calls `_launch_tool "$idx" "$@"` (`crazycode.sh:258`), so the first user argument lands in the `resume` parameter and is then swallowed by `shift 2` — `crazycode claude --model x` loses `--model x`. Pre-existing, untouched here, worth its own milestone.
 - The capability matrix is a snapshot: gemini and opencode could add a launch-time picker at any release, at which point their `resume_args` entry stops being empty. `tests/test_resume_picker.sh` pins today's behaviour so the change is deliberate rather than accidental.
+
+---
+
+## M29: CLI mode — user arguments land in the `resume` parameter ✅
+
+**Problem:** `_launch_tool` has the signature `(idx, resume, args...)` (`crazycode.sh:178-180`), but CLI mode calls it as `_launch_tool "$idx" "$@"` (`crazycode.sh:273`) — with no resume argument. The user's first argument therefore binds to `resume`, and `shift 2` then discards it. Reproduced against stub tools on 2026-07-31:
+
+| typed | actually executed |
+|---|---|
+| `crazycode claude --model opus` | `claude --dangerously-skip-permissions opus` |
+| `crazycode aider --message ciao` | `aider --yes-always ciao` |
+| `crazycode claude foo` | `claude --dangerously-skip-permissions` |
+| `crazycode claude 1` | `claude --dangerously-skip-permissions --resume` |
+
+Three distinct failures:
+
+1. **A flag is dropped and its value is promoted to a positional.** `--model opus` becomes a bare `opus`, which claude and codex read as the initial prompt. The tool starts and does something, so nothing signals that the flag was lost.
+2. **A lone argument disappears silently.** `crazycode claude foo` runs claude with no prompt.
+3. **A numeric argument switches modes.** `crazycode claude 1` enters resume mode, because `1` binds to `resume` and satisfies `[[ $resume -eq 1 ]]`.
+
+**And `[[ $resume -eq 1 ]]` evaluates its operand as an arithmetic expression**, where bash performs command substitution and array-subscript evaluation. With `resume` now holding arbitrary user text, `crazycode claude 'a[$(touch FILE)]'` creates FILE — verified. The typed command is the user's own, so this is not a privilege boundary, but any wrapper, alias or pasted one-liner that forwards arguments to `crazycode` extends the reach beyond what the user typed. A string comparison closes it at no cost.
+
+**Fix:**
+
+1. CLI mode passes the flag explicitly: `_launch_tool "$idx" 0 "$@"`. User arguments then start where the signature says they do.
+2. `_launch_tool` drops the `shift 2 2>/dev/null || shift` fallback for a plain `shift 2`. The fallback only ever papered over the malformed call; with both callers passing two leading arguments it is dead weight that would silently re-enable the bug if a third caller appeared.
+3. `[[ "$resume" == "1" ]]` replaces `[[ $resume -eq 1 ]]`, keeping user-controlled text out of the arithmetic evaluator.
+
+**CLI resume needs no new subcommand after this:** `crazycode claude --resume` forwards `--resume` to claude and opens its picker, and `crazycode codex resume` forwards the subcommand. The M28 hint lines stay a TUI feature, which is where the user has no other way to learn the keybind.
+
+**Alternatives considered and rejected:**
+
+- **Parse a `resume` / `-r` subcommand in CLI mode and map it to the M28 resume path**: rejected — it shadows a word the wrapped tools may want (codex already has `resume`), and it duplicates knowledge that forwarding gives for free.
+- **Keep the positional signature and have CLI mode pass `"" "$@"`**: rejected — an empty string reads as "no opinion" and still flows into the comparison; `0` states the intent.
+- **Leave the arithmetic comparison and only fix the caller**: rejected — the caller fix removes today's path to the evaluator, not the property that `-eq` evaluates its operand. The next caller reintroduces it.
+
+**Tasks:**
+- [x] M29a: CLI mode calls `_launch_tool "$idx" 0 "$@"`; `_launch_tool` uses a plain `shift 2`
+- [x] M29b: Replace `[[ $resume -eq 1 ]]` with the string comparison `[[ "$resume" == "1" ]]`
+- [x] M29c: Add `tests/test_cli_args.sh` — a functional test that puts stub tools on PATH and asserts the forwarded argv: `--model opus` survives, a lone `foo` survives, `1` is forwarded instead of triggering resume, and `a[$(touch …)]` creates no file
+- [x] M29d: Run `bash -n crazycode.sh` and the full `tests/` suite green
+- [x] M29e: Reinstall with `./install.sh`, commit and push to `main`
+
+### Notes
+- `tests/test_cli_args.sh` is the first test in this repo that executes `crazycode.sh` rather than reading it. The stubs make it hermetic — no real assistant is invoked, and PATH is scoped to the test process.
+- The TUI caller (`_launch_tool "$selected" "$_resume" "$@"`) was already correct. Its trailing `"$@"` is always empty, since the TUI is only reached when `$# -eq 0`.
