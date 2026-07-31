@@ -17,12 +17,14 @@ A terminal launcher for AI coding tools — with a full awake-mode toggle that k
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [c] coffeeshot ☕     [awake mode off]
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ↑↓/1-7 select  ·  enter launch  ·  c toggle  ·  r resume  ·  q quit
+  ↑↓/1-7 select  ·  enter launch  ·  r resume  ·  c toggle awake mode  ·  q quit
   ⏱  last session: aider · 12m 34s
   ⚠  all tools launch without asking permission
 ```
 
-The menu shows your working directory, git branch (with dirty indicator ●), and returns here after exiting any tool. Session duration is displayed after each tool exit. Press `r` to resume the last session.
+The menu shows your working directory, git branch (with dirty indicator ●), and returns here after exiting any tool. Session duration is displayed after each tool exit.
+
+`r` starts the highlighted tool in resume mode, from the first keystroke — nothing needs to have run first. It does not name a session: you pick that inside the tool. claude and codex open their session picker on launch; forge, gemini and opencode start clean and keep their picker in-app (`/conversation`, `/resume`, and `ctrl+x` then `l` respectively). goose has no picker and resumes its most recent session; aider has no sessions and reloads the directory's chat history.
 
 ## Quick install
 

@@ -826,3 +826,58 @@ Each `read` consumes one buffered byte instantly; once the buffer is empty the f
 ### Notes
 - Root cause is generic to all child TUIs, not opencode-specific — `opencode → codex` is just the most reproducible pairing because opencode emits a query whose response contains a `3` as the first standalone digit. The fix covers every tool.
 - Out of scope: draining inside `_launch_tool` for CLI mode (the process exits right after, nothing reads the buffer).
+
+---
+
+## M28: Launcher — `r` always available, resumes the selected tool without pinning a session ✅
+
+**Problem:** the `r` key is unusable most of the time and, when it does work, it takes a decision that belongs to the user.
+
+1. **Gated on a prior run.** `r` is a no-op unless `_last_tool -ge 0` (`crazycode.sh:404`), which is only set *after* a tool has been launched and has exited inside the same crazycode run (`crazycode.sh:428`). Open crazycode and press `r`: nothing happens. The help line hides the key entirely until then (`crazycode.sh:343`).
+2. **Bound to the last tool, not the selected one.** `r` overwrites the selection with `selected=$_last_tool` (`crazycode.sh:405`), so the highlighted entry is ignored — there is no way to resume a tool other than the one that just exited.
+3. **The launcher picks the session.** Every `resume_args` entry (`crazycode.sh:26-34`) names *the most recent* session: `claude --continue`, `codex resume --last`, `opencode --continue`. The user never sees the list.
+
+**Verified capability matrix** (versions installed 2026-07-31: claude, codex, forge, gemini 1.x, goose 1.34.0, opencode 1.18.4, aider):
+
+| tool | where the session is chosen | invocation for `r` |
+|---|---|---|
+| claude | picker at launch — `--resume` with no value: *"open interactive picker with optional search term"* | `--resume` |
+| codex | picker at launch — `codex resume`: *"picker by default; use `--last` to continue the most recent"* | `resume` (drop `--last`) |
+| forge | in-app `/conversation` — *"Conversation ID to switch to directly (optional — shows interactive picker if absent)"* | none (plain launch) |
+| gemini | in-app `/resume` — *"Browse auto-saved conversations and manage chat checkpoints"* | none (plain launch) |
+| opencode | in-app `session_list` = `<leader>l`, leader defaults to `ctrl+x` — *"List all sessions"* | none (plain launch) |
+| goose | **no picker**: `--resume` resumes the most recent, otherwise `--name`/`--session-id` | `session --resume` (unchanged) |
+| aider | **no sessions**: one chat log per directory | `--restore-chat-history` (unchanged) |
+
+Facts behind the "none" rows: `gemini --resume` with no value coerces the empty string to `RESUME_LATEST` (bundle `gemini-YXO2QQ66.js`), so passing it *is* pinning a session; `opencode -c` is documented as "continue the last session"; `forge` resumes only against an explicit `--conversation-id`. For all three, launching plain is what puts the choice inside the assistant. `goose` and `aider` keep their current flag because neither tool offers a choice to make — goose's only "Select a session" prompt is in the *export* path, and aider has a single history file per folder.
+
+**Collateral defect on the same path:** the codex branch (`crazycode.sh:197-200`) runs `codex resume --last "$@"` without `${launch_args[$idx]}`, so a resumed codex session loses `--sandbox danger-full-access --ask-for-approval never` and starts asking for approvals — contradicting the launcher's own footer, *"all tools launch without asking permission"*. `codex resume` accepts both flags; they are simply not passed.
+
+**Fix:**
+
+1. `resume_args` becomes "how this tool opens its session chooser": `claude` → `--resume`, `forge`/`gemini`/`opencode` → empty, `aider`/`goose` unchanged. Comments record what each tool actually supports so the next reader does not have to re-derive it.
+2. New parallel `resume_hints` array, printed dim under `Resuming <tool>...`, telling the user where the chooser is (`/conversation` for forge, `/resume` for gemini, `ctrl+x` then `l` for opencode) or why there is none (goose, aider). Without it, `r` on those three is visually identical to `enter` and looks broken.
+3. codex branch: `env $env_prefix ${cmd} resume ${launch_args[$idx]} "$@"` — picker restored, sandbox flags restored.
+4. `r` handler: drop the `_last_tool` guard and the `selected=$_last_tool` overwrite; set `_resume=1` and launch whatever is highlighted.
+5. Help line always shows `r resume`; the `⏱ last session` footer keeps the elapsed time and drops the "press `r` to resume" call to action, which no longer describes what the key does.
+6. README (line 20-25) updated to match.
+
+**Alternatives considered and rejected:**
+
+- **Show the session list inside crazycode** (`gemini --list-sessions`, `goose session list`, `forge conversation list`, then prompt for an index): rejected — that is the launcher declaring the session, the exact thing this milestone removes. It also forces crazycode to parse seven different list formats and to track upstream changes to each.
+- **Keep `--continue`/`-c` as a fallback for the three plain-launch tools**: rejected — it silently resumes the most recent session on tools that *do* have a chooser, so `r` would keep making the choice on 5 of 7 tools.
+- **Drop the flag for goose and aider too** (uniform plain launch): rejected — on those two `r` would become byte-identical to `enter`, discarding the only resume they have. The hint line makes the asymmetry visible instead of hiding it.
+- **Keep `r` bound to `_last_tool` and add a second key for the selected tool**: rejected — two keys for one action; the selected entry is already the menu's notion of "what you are about to launch".
+
+**Tasks:**
+- [x] M28a: Rewrite the `resume_args` array in `crazycode.sh` (claude `--resume`; forge/gemini/opencode empty; aider/goose unchanged) with per-entry comments naming the tool's actual chooser
+- [x] M28b: Add the `resume_hints` parallel array and print the hint line under `Resuming <tool>...` in `_launch_tool`
+- [x] M28c: Fix the codex resume branch — drop `--last`, pass `${launch_args[$idx]}`
+- [x] M28d: Ungate the `r` key — always active, resumes the currently selected entry (no `_last_tool` guard, no selection overwrite)
+- [x] M28e: Help line always lists `r resume`; strip "press `r` to resume" from the `⏱ last session` footer (keep `_last_tool` for the tool name it prints)
+- [x] M28f: Add `tests/test_resume_picker.sh` asserting (i) `resume_args` holds `--resume` for claude and empty strings for forge/gemini/opencode, (ii) the codex branch contains `resume ${launch_args[$idx]}` and no `--last`, (iii) the `[rR]` case has no `_last_tool` guard, (iv) the help line adds `r` unconditionally
+- [x] M28g: Update README.md lines 20-25 to describe `r` as "resume the selected tool, choose the session inside it"; run `bash -n crazycode.sh` and the full `tests/` suite green
+
+### Notes
+- Out of scope: a resume path for CLI mode (`crazycode claude resume`). Related but separate: CLI mode calls `_launch_tool "$idx" "$@"` (`crazycode.sh:258`), so the first user argument lands in the `resume` parameter and is then swallowed by `shift 2` — `crazycode claude --model x` loses `--model x`. Pre-existing, untouched here, worth its own milestone.
+- The capability matrix is a snapshot: gemini and opencode could add a launch-time picker at any release, at which point their `resume_args` entry stops being empty. `tests/test_resume_picker.sh` pins today's behaviour so the change is deliberate rather than accidental.

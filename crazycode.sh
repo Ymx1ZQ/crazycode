@@ -23,14 +23,28 @@ _crazycode_main() {
     ""
     ""
   )
+  # How each tool opens its own session chooser. An empty entry means "launch
+  # plain": that tool picks the session from inside its TUI, and every flag we
+  # could pass here would pin one session instead of letting the user choose.
   local resume_args=(
-    "--restore-chat-history"
-    "--continue"
-    ""  # codex uses subcommand, handled in _launch_tool
-    ""  # forge resume needs an explicit conversation-id, no --last shortcut
-    ""  # gemini has no native resume flag
-    "session --resume"
-    "--continue"
+    "--restore-chat-history"  # aider: one chat log per directory, nothing to choose
+    "--resume"                # claude: no value → interactive session picker
+    ""                        # codex: `codex resume` subcommand, handled in _launch_tool
+    ""                        # forge: /conversation shows the picker when given no id
+    ""                        # gemini: /resume in-app; `--resume` with no value means "latest"
+    "session --resume"        # goose: no picker — resumes the most recent session
+    ""                        # opencode: session list in-app; -c would pin the last one
+  )
+  # Printed under "Resuming <tool>..." so the user knows where that tool keeps
+  # its chooser — or why it hasn't got one.
+  local resume_hints=(
+    "reloading this folder's chat history — aider has no separate sessions"
+    ""
+    ""
+    "type /conversation inside forge to pick a conversation"
+    "type /resume inside gemini to browse saved conversations"
+    "goose has no session picker — resuming the most recent session"
+    "press ctrl+x then l inside opencode for the session list"
   )
   local num_items=${#items[@]}
   local selected=0
@@ -192,11 +206,15 @@ _crazycode_main() {
     fi
 
     if [[ $resume -eq 1 ]]; then
-      printf "\n  ${color}${B}Resuming ${tool}...${X}\n\n"
-      # codex uses a subcommand for resume
+      printf "\n  ${color}${B}Resuming ${tool}...${X}\n"
+      [[ -n "${resume_hints[$idx]}" ]] && printf "  ${D}${resume_hints[$idx]}${X}\n"
+      printf "\n"
+      # codex reaches its picker through a subcommand; `--last` would skip the
+      # picker, and the launch_args carry the no-approval flags that a resumed
+      # session needs just as much as a fresh one.
       if [[ "$tool" == "codex" ]]; then
         # shellcheck disable=SC2086
-        env $env_prefix ${cmd} resume --last "$@"
+        env $env_prefix ${cmd} resume ${launch_args[$idx]} "$@"
       else
         # shellcheck disable=SC2086
         env $env_prefix ${cmd} ${launch_args[$idx]} ${resume_args[$idx]} "$@"
@@ -339,13 +357,12 @@ _crazycode_main() {
     printf "\033[$((hdr + num_items + 1));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
     draw_awake
     printf "\033[$((hdr + num_items + 3));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
-    local help_line="${B}↑↓/1-7${X}${D} select  ·  ${X}${B}enter${X}${D} launch  ·  ${X}${B}c${X}${D} toggle awake mode"
-    [[ $_last_tool -ge 0 ]] && help_line+="  ·  ${X}${B}r${X}${D} resume last session"
-    help_line+="  ·  ${X}${B}q${X}${D} quit${X}"
+    local help_line="${B}↑↓/1-7${X}${D} select  ·  ${X}${B}enter${X}${D} launch  ·  ${X}${B}r${X}${D} resume"
+    help_line+="  ·  ${X}${B}c${X}${D} toggle awake mode  ·  ${X}${B}q${X}${D} quit${X}"
     printf "\033[$((hdr + num_items + 4));1H  ${D}${help_line}\n"
     local footer_row=$((hdr + num_items + 5))
     if [[ -n "$_last_session" ]]; then
-      printf "\033[${footer_row};1H  ${D}⏱  last session: ${items[$_last_tool]} · ${_last_session} — press ${X}${B}r${X}${D} to resume${X}\n"
+      printf "\033[${footer_row};1H  ${D}⏱  last session: ${items[$_last_tool]} · ${_last_session}${X}\n"
       ((footer_row++))
     fi
     printf "\033[${footer_row};1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}\n"
@@ -401,11 +418,11 @@ _crazycode_main() {
           echo -ne "\033[${prompt_row};1H"
           ;;
         [rR])
-          if [[ $_last_tool -ge 0 ]]; then
-            selected=$_last_tool
-            _resume=1
-            break
-          fi
+          # Resume mode for whatever is highlighted, available from the first
+          # keystroke — no tool needs to have run in this crazycode session
+          # first, and the selection is never overwritten.
+          _resume=1
+          break
           ;;
         [1-7])
           local num_idx=$((key - 1))
