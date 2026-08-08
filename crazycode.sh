@@ -362,18 +362,22 @@ _crazycode_main() {
     printf "  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
     local i
     for i in "${!items[@]}"; do draw_line "$i" 0; done
-    printf "\033[$((hdr + num_items + 1));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
+    # Everything below positions its own row, so none of it ends with "\n".
+    # The newline would be one row more than the layout occupies, and on a
+    # terminal exactly as tall as the layout that scrolls the menu up one row
+    # while the draws that follow keep addressing the old rows.
+    printf "\033[$((hdr + num_items + 1));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}"
     draw_awake
-    printf "\033[$((hdr + num_items + 3));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}\n"
+    printf "\033[$((hdr + num_items + 3));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}"
     local help_line="${B}↑↓/1-7${X}${D} select  ·  ${X}${B}enter${X}${D} launch  ·  ${X}${B}r${X}${D} resume"
     help_line+="  ·  ${X}${B}c${X}${D} toggle awake mode  ·  ${X}${B}q${X}${D} quit${X}"
-    printf "\033[$((hdr + num_items + 4));1H  ${D}${help_line}\n"
+    printf "\033[$((hdr + num_items + 4));1H  ${D}${help_line}"
     local footer_row=$((hdr + num_items + 5))
     if [[ -n "$_last_session" ]]; then
-      printf "\033[${footer_row};1H  ${D}⏱  last session: ${items[$_last_tool]} · ${_last_session}${X}\n"
+      printf "\033[${footer_row};1H  ${D}⏱  last session: ${items[$_last_tool]} · ${_last_session}${X}"
       ((footer_row++))
     fi
-    printf "\033[${footer_row};1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}\n"
+    printf "\033[${footer_row};1H  ${BY}⚠${X}  ${D}all tools launch without asking permission${X}"
     draw_line "$selected" 1
   }
 
@@ -411,19 +415,25 @@ _crazycode_main() {
           break
           ;;
         c)
+          # sudo asks for the password below the footer, and what it prints
+          # there is not one line in general: a first-use lecture, a
+          # "Sorry, try again." per wrong password, the newline the user's Enter
+          # echoes on the bottom row. Any of those scrolls the screen, and every
+          # draw here addresses rows absolutely from the top — an assumption
+          # only `clear` restores. So repaint the whole screen instead of
+          # patching the awake line in place; draw_all ends on the selected
+          # entry, which is also where the cursor belongs.
           local _extra=0
           [[ -n "$_last_session" ]] && _extra=1
           local prompt_row=$((hdr + num_items + 6 + _extra))
           echo -ne "\033[${prompt_row};1H\033[K"
           sudo -v
-          echo -ne "\033[${prompt_row};1H\033[K"
           if is_awake; then
             disable_awake
           else
             enable_awake
           fi
-          draw_awake
-          echo -ne "\033[${prompt_row};1H"
+          draw_all
           ;;
         [rR])
           # Resume mode for whatever is highlighted, available from the first

@@ -927,3 +927,51 @@ Three distinct failures:
 ### Notes
 - `tests/test_cli_args.sh` is the first test in this repo that executes `crazycode.sh` rather than reading it. The stubs make it hermetic — no real assistant is invoked, and PATH is scoped to the test process.
 - The TUI caller (`_launch_tool "$selected" "$_resume" "$@"`) was already correct. Its trailing `"$@"` is always empty, since the TUI is only reached when `$# -eq 0`.
+
+---
+
+## M30: the terminal cursor stays parked below the footer after the `c` toggle ✅
+
+**Problem:** after pressing `c`, the awake line updates but the terminal cursor stays on the last row of the screen instead of returning to the highlighted menu entry. Reported 2026-08-08 with a screenshot: `▶` on `aider`, cursor block at the bottom-left, below the `⚠ all tools launch without asking permission` line.
+
+The `c` handler (`crazycode.sh:413-427`) ends with:
+
+```bash
+draw_awake
+echo -ne "\033[${prompt_row};1H"
+```
+
+`prompt_row` is `hdr + num_items + 6 + _extra` — the row where `sudo -v` printed its password prompt, one below the last footer line. The final escape sequence puts the cursor there and nothing moves it again until the next keystroke.
+
+Every other path in the TUI ends on the selected entry, because `draw_line "$selected" 1` is the last thing they print: `draw_all` (`crazycode.sh:377`), the up-arrow branch (`:400`) and the down-arrow branch (`:406`). The cursor is the only moving marker on the screen besides `▶`, so after `c` the two disagree.
+
+The reposition is not redundant, only aimed at the wrong row: `draw_awake` leaves the cursor at the end of the awake line, so without a trailing move the cursor would sit in the middle of the menu instead of the bottom.
+
+**Second defect, same branch — the screen scrolls out from under the absolute row math.** `sudo -v` writes at `prompt_row` and only that one row is cleared afterwards (`crazycode.sh:419`). Its output is not one line in general: sudo prints a multi-line lecture on first use, prints `Sorry, try again.` per wrong password, and echoes a newline when the user presses Enter on the bottom row. Every draw in this TUI addresses rows absolutely from the top of the screen (`\033[row;1H`), an assumption that only holds because `draw_all` starts from `clear`. Once the screen scrolls by N lines, `draw_awake` and `draw_line` paint N rows below where their text now sits — the awake line lands on a separator, the highlighted entry is written over its neighbour, and the previously highlighted one is never cleared. It repairs itself only at the next full `draw_all`, i.e. after launching a tool or resizing the window.
+
+**Third, the layout scrolls itself on a short terminal.** The four absolutely-positioned `printf`s in `draw_all` (`crazycode.sh:365`, `:370`, `:373`, `:376`) each end with `\n`. The last one writes the footer on the bottom-most row of the layout, and its newline asks for one row more than the layout occupies. On a terminal exactly as tall as the layout (17 rows in a git repo, 16 outside one) that newline scrolls the whole menu up by one, and the `draw_line "$selected" 1` that follows then highlights the wrong entry. None of those newlines carries layout: every one of the four positions its own row explicitly, and so does the next statement.
+
+**Fix:**
+
+1. The `c` branch ends with `draw_all` instead of `echo -ne "\033[${prompt_row};1H"`. A full repaint restarts from `clear`, which is the only thing that re-establishes the "row 1 is the top" invariant after sudo has scrolled the screen — and `draw_all` already ends with `draw_line "$selected" 1`, so the cursor lands back on the selection. The now-pointless `echo -ne "\033[${prompt_row};1H\033[K"` that followed `sudo -v` goes with it; the one *before* `sudo -v` stays, since it is what puts the password prompt below the footer.
+2. Drop the trailing `\n` from the four absolutely-positioned `printf`s in `draw_all`.
+
+**Alternatives considered and rejected:**
+
+- **End the `c` branch with `draw_line "$selected" 1`** (park the cursor on the selection, no repaint): rejected — it fixes the reported symptom at zero cost but leaves defect 2 untouched, and after a scroll it writes the `▶` onto the wrong row, turning a misplaced cursor into a corrupted menu.
+- **Hide the cursor for the whole TUI** (`\033[?25l` at start; `_cleanup` already emits `\033[?25h`): rejected — it removes the marker the user is tracking rather than putting it back, and it hides where the `sudo -v` prompt is waiting for input.
+- **Run the sudo prompt on a scratch screen** (alternate buffer `\033[?1049h`, or `clear` before `sudo -v`): rejected — it hides the menu while sudo asks for the password, for the same protection the repaint gives afterwards.
+- **Read the terminal height and clamp the layout** (`tput lines`, skip footer rows that do not fit): rejected here — it is a real improvement for tiny windows, but it is a layout feature, not this defect; dropping the four newlines removes the self-inflicted scroll without adding a size-dependent code path.
+
+**Tasks:**
+- [x] M30a: `c` branch ends with `draw_all`; drop the post-`sudo -v` cursor move and the redundant row clear
+- [x] M30b: Drop the trailing `\n` from the four absolutely-positioned `printf`s in `draw_all`
+- [x] M30c: Add `tests/test_awake_cursor.sh` — static assertions in the style of `test_input_drain.sh`: the `c` block ends with `draw_all`, no longer holds a bare cursor move to `prompt_row`, still positions the sudo prompt at `prompt_row`; and no absolutely-positioned `printf` in `draw_all` ends with `\n`
+- [x] M30d: Add `tests/test_tui_render.sh` — functional test that runs the real TUI under a pty (`script`), replays the captured output through a small ANSI screen emulator (pure-stdlib Python, no `pyte`/`tmux` on this box) and asserts on the rendered screen: (i) after `c` on an 18-row screen with a lecture-printing `sudo` stub, (ii) on a 16-row screen where the layout fits exactly, (iii) at 24×80 where the help line wraps onto the footer row — each time all seven entries intact, exactly one highlighted, no sudo text left over, cursor on the highlighted row. System commands (`sudo`, `systemctl`, `systemd-inhibit`, `setsid`, `gsettings`, `pkill`, `kreadconfig5`, `kwriteconfig5`) are PATH stubs that only log their argv — the test asserts the log to prove the real ones never ran
+- [x] M30e: Run `bash -n crazycode.sh` and the full `tests/` suite green
+- [x] M30f: Reinstall with `./install.sh`, commit and push to `main` (devplan ticks in the same commit)
+
+### Notes
+- Both defects were reproduced on the rendered screen before the fix, which is what the new test asserts against. After `c` on an 18-row screen: cursor on row 17, `▶` on row 3, the awake line painted **twice** (rows 11 and 13 — `draw_awake` wrote to its absolute row while the menu had scrolled two rows up), two lines of sudo output still on screen and the help line scrolled off. On a 16-row screen, with no key pressed at all: the footer's newline scrolled the menu up one row, then `draw_line "$selected" 1` wrote `▶ aider` over the row that held `claude` — `aider` listed twice, `claude` gone.
+- `tests/test_tui_render.sh` is the first test that drives the TUI rather than the CLI. It must never touch the machine's real power settings: `pkill -f 'systemd-inhibit.*crazycode-awake'` would kill a genuine inhibitor and `gsettings set org.gnome.desktop.session idle-delay 0` would rewrite the user's desktop settings, so the stub directory goes first on `PATH` and the test fails if the argv log does not show the stubs were the ones invoked.
+- Not fixed, and now the only known instance of the same class: a terminal shorter than the layout still gets a clipped menu, since nothing consults `tput lines`. The difference after this milestone is that the TUI no longer causes the scroll itself.
