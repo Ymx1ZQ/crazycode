@@ -10,16 +10,18 @@ _crazycode_main() {
   local BM='\033[1;35m'  # bold magenta
   local BC='\033[1;36m'  # bold cyan
   local BW='\033[1;37m'  # bold white
+  local MO='\033[38;5;208m'  # orange for Muse
 
-  local items=("aider" "claude" "codex" "forge" "gemini" "goose" "opencode")
-  local cmds=("aider" "claude" "codex" "forge" "gemini" "goose" "opencode")
-  local descriptions=("Paul Gauthier" "Anthropic" "OpenAI" "Tailcall" "Google" "AAIF" "SST")
+  local items=("aider" "claude" "codex" "forge" "gemini" "goose" "muse" "opencode")
+  local cmds=("aider" "claude" "codex" "forge" "gemini" "goose" "muse" "opencode")
+  local descriptions=("Paul Gauthier" "Anthropic" "OpenAI" "Tailcall" "Google" "AAIF" "Meta" "SST")
   local launch_args=(
     "--yes-always"
     "--dangerously-skip-permissions"
     "--sandbox danger-full-access --ask-for-approval never"
     ""
     "--yolo"
+    ""
     ""
     ""
   )
@@ -33,6 +35,7 @@ _crazycode_main() {
     ""                        # forge: /conversation shows the picker when given no id
     ""                        # gemini: /resume in-app; `--resume` with no value means "latest"
     "session --resume"        # goose: no picker — resumes the most recent session
+    ""                        # muse: `muse resume` subcommand, handled in _launch_tool
     ""                        # opencode: session list in-app; -c would pin the last one
   )
   # Printed under "Resuming <tool>..." so the user knows where that tool keeps
@@ -44,6 +47,7 @@ _crazycode_main() {
     "type /conversation inside forge to pick a conversation"
     "type /resume inside gemini to browse saved conversations"
     "goose has no session picker — resuming the most recent session"
+    ""
     "press ctrl+x then l inside opencode for the session list"
   )
   local num_items=${#items[@]}
@@ -149,6 +153,7 @@ _crazycode_main() {
       forge)    printf "%s" "$BM" ;;
       gemini)   printf "%s" "$BB" ;;
       goose)    printf "%s" "$BG" ;;
+      muse)     printf "%s" "$MO" ;;
       opencode) printf "%s" "$BW" ;;
       *)          printf "%s" "$D" ;;
     esac
@@ -217,7 +222,7 @@ _crazycode_main() {
       # codex reaches its picker through a subcommand; `--last` would skip the
       # picker, and the launch_args carry the no-approval flags that a resumed
       # session needs just as much as a fresh one.
-      if [[ "$tool" == "codex" ]]; then
+      if [[ "$tool" == "codex" || "$tool" == "muse" ]]; then
         # shellcheck disable=SC2086
         env $env_prefix ${cmd} resume ${launch_args[$idx]} "$@"
       else
@@ -258,6 +263,7 @@ _crazycode_main() {
     printf "    ${BM}forge${X}      Launch ForgeCode (FORGE_TRACKER=0 set by default)\n"
     printf "    ${BB}gemini${X}     Launch Gemini CLI (--yolo)\n"
     printf "    ${BG}goose${X}      Launch Goose (GOOSE_MODE=auto set by default)\n"
+    printf "    ${MO}muse${X}       Launch Muse Code (Meta)\n"
     printf "    ${BW}opencode${X}   Launch opencode\n"
     printf "    ${BG}coffeeshot${X}     Toggle awake mode on/off\n"
     printf "    ${D}status${X}         Show awake mode status\n\n"
@@ -369,7 +375,7 @@ _crazycode_main() {
     printf "\033[$((hdr + num_items + 1));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}"
     draw_awake
     printf "\033[$((hdr + num_items + 3));1H  ${D}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${X}"
-    local help_line="${B}↑↓/1-7${X}${D} select  ·  ${X}${B}enter${X}${D} launch  ·  ${X}${B}r${X}${D} resume"
+    local help_line="${B}↑↓/1-8${X}${D} select  ·  ${X}${B}enter${X}${D} launch  ·  ${X}${B}r${X}${D} resume"
     help_line+="  ·  ${X}${B}c${X}${D} toggle awake mode  ·  ${X}${B}q${X}${D} quit${X}"
     printf "\033[$((hdr + num_items + 4));1H  ${D}${help_line}"
     local footer_row=$((hdr + num_items + 5))
@@ -442,7 +448,7 @@ _crazycode_main() {
           _resume=1
           break
           ;;
-        [1-7])
+        [1-8])
           local num_idx=$((key - 1))
           if [[ $num_idx -lt $num_items ]]; then
             selected=$num_idx
@@ -483,7 +489,7 @@ _crazycode_main() {
 # ── bash completion ──────────────────────────────────────────────────
 _crazycode_completions() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  COMPREPLY=( $(compgen -W "aider claude codex forge gemini goose opencode coffeeshot status --help" -- "$cur") )
+  COMPREPLY=( $(compgen -W "aider claude codex forge gemini goose muse opencode coffeeshot status --help" -- "$cur") )
 }
 # NOTE: completion words match items array + extra commands; update if items change
 complete -F _crazycode_completions crazycode

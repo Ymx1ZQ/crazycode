@@ -13,18 +13,19 @@ A terminal launcher for AI coding tools — with a full awake-mode toggle that k
   4 forge           Tailcall            ✓
   5 gemini          Google              ✓
   6 goose           AAIF                ✓
-  7 opencode        SST                 ✗
+  7 muse            Meta                ✗
+  8 opencode        SST                 ✗
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [c] coffeeshot ☕     [awake mode off]
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ↑↓/1-7 select  ·  enter launch  ·  r resume  ·  c toggle awake mode  ·  q quit
+  ↑↓/1-8 select  ·  enter launch  ·  r resume  ·  c toggle awake mode  ·  q quit
   ⏱  last session: aider · 12m 34s
   ⚠  all tools launch without asking permission
 ```
 
 The menu shows your working directory, git branch (with dirty indicator ●), and returns here after exiting any tool. Session duration is displayed after each tool exit.
 
-`r` starts the highlighted tool in resume mode, from the first keystroke — nothing needs to have run first. It does not name a session: you pick that inside the tool. claude and codex open their session picker on launch; forge, gemini and opencode start clean and keep their picker in-app (`/conversation`, `/resume`, and `ctrl+x` then `l` respectively). goose has no picker and resumes its most recent session; aider has no sessions and reloads the directory's chat history.
+`r` starts the highlighted tool in resume mode, from the first keystroke — nothing needs to have run first. It does not name a session: you pick that inside the tool. claude, codex and muse open their session picker on launch (`--resume` / `resume`); forge, gemini and opencode start clean and keep their picker in-app (`/conversation`, `/resume`, and `ctrl+x` then `l` respectively). goose has no picker and resumes its most recent session; aider has no sessions and reloads the directory's chat history.
 
 ## Quick install
 
@@ -52,6 +53,7 @@ Flags: `--all` (install everything, no prompts), `--silent` (errors only).
 | **forge** | Opens [ForgeCode](https://github.com/tailcallhq/forgecode) — Tailcall's open-source coding agent (`FORGE_TRACKER=0` set by default — opt-out of US-residency telemetry) |
 | **gemini** | Opens [Gemini CLI](https://github.com/google-gemini/gemini-cli) — Google's AI coding CLI (`--yolo`) |
 | **goose** | Opens [Goose](https://github.com/aaif-goose/goose) — AAIF's open-source AI agent (`GOOSE_MODE=auto` set by default — fully autonomous tool execution) |
+| **muse** | Opens [Muse Code](https://developer.meta.com/ai/products/muse-code/) — Meta's AI coding CLI powered by Muse Spark (`muse resume` to resume) |
 | **opencode** | Opens [opencode](https://github.com/sst/opencode) — AI coding tool by SST |
 | **coffeeshot** `[c]` | Awake mode — keeps the PC fully alive: masks sleep/suspend/hibernate, holds a `systemd-inhibit` idle inhibitor, ignores lid switch, disables screen lock |
 | **camomile** `[c]` | Restores normal power management (toggle coffeeshot off) |
@@ -65,6 +67,7 @@ Launch tools directly without the TUI:
 ```bash
 crazycode aider          # launch aider directly
 crazycode claude         # launch claude code directly
+crazycode muse           # launch Muse Code directly
 crazycode coffeeshot     # toggle awake mode on/off
 crazycode status         # show awake mode status
 crazycode --help         # show all commands

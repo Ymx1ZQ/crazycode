@@ -975,3 +975,49 @@ The reposition is not redundant, only aimed at the wrong row: `draw_awake` leave
 - Both defects were reproduced on the rendered screen before the fix, which is what the new test asserts against. After `c` on an 18-row screen: cursor on row 17, `▶` on row 3, the awake line painted **twice** (rows 11 and 13 — `draw_awake` wrote to its absolute row while the menu had scrolled two rows up), two lines of sudo output still on screen and the help line scrolled off. On a 16-row screen, with no key pressed at all: the footer's newline scrolled the menu up one row, then `draw_line "$selected" 1` wrote `▶ aider` over the row that held `claude` — `aider` listed twice, `claude` gone.
 - `tests/test_tui_render.sh` is the first test that drives the TUI rather than the CLI. It must never touch the machine's real power settings: `pkill -f 'systemd-inhibit.*crazycode-awake'` would kill a genuine inhibitor and `gsettings set org.gnome.desktop.session idle-delay 0` would rewrite the user's desktop settings, so the stub directory goes first on `PATH` and the test fails if the argv log does not show the stubs were the ones invoked.
 - Not fixed, and now the only known instance of the same class: a terminal shorter than the layout still gets a clipped menu, since nothing consults `tput lines`. The difference after this milestone is that the TUI no longer causes the scroll itself.
+
+---
+
+## M31: Add `muse` (Meta Muse Code) as a launcher option ✅
+
+**Goal:** Add Muse Code — Meta's terminal coding agent powered by Muse Spark 1.2 (beta on macOS/Linux) — as the 8th launcher in crazycode, so it sits alongside the other CLIs with a single `curl` install and a `muse resume` picker. Final menu order (alphabetical, per M18 convention): `aider · claude · codex · forge · gemini · goose · muse · opencode`.
+
+**Tool details:**
+- Binary: `muse`
+- Installer: `curl -fsSL https://dev.meta.ai/install.sh | bash` (same shape as `claude`'s `https://claude.ai/install.sh`; no sudo, no npm)
+- Auto-approve: no documented yolo flag in the beta docs/news (Meta docs/news only mention `muse` and `muse resume`, no `--yolo`/`--dangerously-skip-permissions`). Launch with no extra flag, matching `forge`'s stance; revisit if a future release adds a gated mode.
+- Resume: `muse resume` (documented by Meta as "allowing interrupted sessions to be resumed with the `muse resume` command" against the append-only local event log — same category as `codex resume`). Requires the subcommand-override branch in `_launch_tool` (like `codex`), not the generic `resume_args` append.
+- Vendor description: `Meta` (homogeneous with M18 vendor-only style)
+
+**Changes:**
+
+1. **`crazycode.sh`:**
+   - Insert `muse` into `items`, `cmds`, `descriptions` (`Meta`), `launch_args` (`""`), `resume_args` (`""` — the `resume` subcommand is handled in the `_launch_tool` override, per M28), `resume_hints` (`""`) at index 6 (between `goose` at 5 and `opencode` which moves from 6 → 7) to preserve alphabetical order.
+   - Add `MO='\033[38;5;208m'` (orange) and a `muse` case in `get_color()` — red/cyan/yellow/white/bold-blue/bold-magenta/bold-green are taken by the other seven.
+   - Extend `_launch_tool` resume override from `[[ "$tool" == "codex" ]]` to `[[ "$tool" == "codex" || "$tool" == "muse" ]]` → `muse resume ${launch_args[$idx]}`.
+   - Add `muse` to `_print_help()` output (between `goose` and `opencode`).
+   - Add `muse` to the `compgen -W` list in `_crazycode_completions()`.
+   - `help_line` `↑↓/1-7` → `↑↓/1-8` and `case [1-7]` → `[1-8]`; `num_items` derives from `${#items[@]}` so layout rows recompute automatically.
+
+2. **`install.sh`:**
+   - Add a new `_ask "muse" "Meta's AI coding CLI (curl -fsSL https://dev.meta.ai/install.sh | bash)"` block, calling `curl -fsSL https://dev.meta.ai/install.sh | bash` and `_track "muse" "muse"`. Place it between the `goose` and `opencode` blocks (alphabetical order, matching M21).
+
+3. **`README.md`:**
+   - Add a `muse` row to the "What each option does" table (between `goose` and `opencode`).
+   - Update the ASCII demo block to show 8 entries instead of 7, renumbering `opencode` from `7` → `8` and adding `muse` at `7`.
+   - Update the `r` paragraph to list `muse` alongside `claude`/`codex` as picker-at-launch, and the CLI usage example to mention `crazycode muse` and the help-line key hint (`↑↓/1-7` → `↑↓/1-8`).
+
+4. **`tests/`:**
+   - Add `tests/test_muse_launcher.sh` (static analysis) covering: (a) `muse` appears in `items`/`cmds` in `crazycode.sh`; (b) `_launch_tool` resume branch matches `muse`; (c) `install.sh` has an `_ask "muse"` block invoking `https://dev.meta.ai/install.sh`; (d) `README.md` mentions `muse` in the tools table.
+
+**Tasks:**
+- [x] M31a: Update `crazycode.sh` arrays (`items`/`cmds`/`descriptions`/`launch_args`/`resume_args`/`resume_hints`), `get_color`, `_launch_tool` resume branch, `_print_help`, `_crazycode_completions`, numeric-key range `[1-8]` and help line
+- [x] M31b: Add `muse` block to `install.sh` (`_ask` + `curl | bash` + `_track`), between `goose` and `opencode`
+- [x] M31c: Update `README.md` table, ASCII demo (8 entries, renumbered), `r` paragraph, CLI example, and `1-7` → `1-8` references
+- [x] M31d: Add `tests/test_muse_launcher.sh` static-analysis check
+- [x] M31e: Sanity-check with `bash -n crazycode.sh && bash -n install.sh` and run `tests/test_muse_launcher.sh` (green)
+
+### Notes
+- `muse` orange (`MO`) is distinct from `codex` yellow and `forge` magenta while matching Meta's brand accent; any 256-color fallback degrades to the nearest orange on 8-color terminals.
+- `launch_args` for `muse` stays empty because the beta reports no gated permission mode to bypass (unlike `claude --dangerously-skip-permissions`, `codex --sandbox danger-full-access`, `gemini --yolo`, `goose GOOSE_MODE=auto`). If Meta later adds a `--yolo`/`--dangerously-skip-permissions` equivalent, add it to `launch_args[6]` and update the table/notes — no structural change needed.
+- `muse resume` is the only resume entry that uses the subcommand-override path alongside `codex`; `resume_args[6]` stays empty so the override is the single source of truth (matches M28 pattern where `resume_args` for subcommand tools is empty and the branch handles it).

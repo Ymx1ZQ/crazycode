@@ -203,6 +203,12 @@ if _ask "goose" "AAIF's open-source AI agent (curl installer, no sudo)"; then
 fi
 _track "goose" "goose"
 
+if _ask "muse" "Meta's AI coding CLI (curl -fsSL https://dev.meta.ai/install.sh | bash)"; then
+  curl -fsSL https://dev.meta.ai/install.sh | bash
+  _ok "muse installed"
+fi
+_track "muse" "muse"
+
 if _ask "opencode" "AI coding tool by SST (npm i -g opencode-ai@latest)"; then
   _install_npm_tool "opencode" "opencode-ai@latest"
 fi
