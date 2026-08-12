@@ -53,7 +53,7 @@ Flags: `--all` (install everything, no prompts), `--silent` (errors only).
 | **forge** | Opens [ForgeCode](https://github.com/tailcallhq/forgecode) — Tailcall's open-source coding agent (`FORGE_TRACKER=0` set by default — opt-out of US-residency telemetry) |
 | **gemini** | Opens [Gemini CLI](https://github.com/google-gemini/gemini-cli) — Google's AI coding CLI (`--yolo`) |
 | **goose** | Opens [Goose](https://github.com/aaif-goose/goose) — AAIF's open-source AI agent (`GOOSE_MODE=auto` set by default — fully autonomous tool execution) |
-| **muse** | Opens [Muse Code](https://developer.meta.com/ai/products/muse-code/) — Meta's AI coding CLI powered by Muse Spark (`muse resume` to resume) |
+| **muse** | Opens [Muse Code](https://developer.meta.com/ai/products/muse-code/) — Meta's AI coding CLI powered by Muse Spark (`--yolo` disables approval/sandbox — `muse resume` to resume) |
 | **opencode** | Opens [opencode](https://github.com/sst/opencode) — AI coding tool by SST |
 | **coffeeshot** `[c]` | Awake mode — keeps the PC fully alive: masks sleep/suspend/hibernate, holds a `systemd-inhibit` idle inhibitor, ignores lid switch, disables screen lock |
 | **camomile** `[c]` | Restores normal power management (toggle coffeeshot off) |

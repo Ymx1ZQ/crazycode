@@ -22,7 +22,7 @@ _crazycode_main() {
     ""
     "--yolo"
     ""
-    ""
+    "--yolo"
     ""
   )
   # How each tool opens its own session chooser. An empty entry means "launch
@@ -222,9 +222,12 @@ _crazycode_main() {
       # codex reaches its picker through a subcommand; `--last` would skip the
       # picker, and the launch_args carry the no-approval flags that a resumed
       # session needs just as much as a fresh one.
-      if [[ "$tool" == "codex" || "$tool" == "muse" ]]; then
+      if [[ "$tool" == "codex" ]]; then
         # shellcheck disable=SC2086
         env $env_prefix ${cmd} resume ${launch_args[$idx]} "$@"
+      elif [[ "$tool" == "muse" ]]; then
+        # shellcheck disable=SC2086
+        env $env_prefix ${cmd} ${launch_args[$idx]} resume "$@"
       else
         # shellcheck disable=SC2086
         env $env_prefix ${cmd} ${launch_args[$idx]} ${resume_args[$idx]} "$@"
@@ -263,7 +266,7 @@ _crazycode_main() {
     printf "    ${BM}forge${X}      Launch ForgeCode (FORGE_TRACKER=0 set by default)\n"
     printf "    ${BB}gemini${X}     Launch Gemini CLI (--yolo)\n"
     printf "    ${BG}goose${X}      Launch Goose (GOOSE_MODE=auto set by default)\n"
-    printf "    ${MO}muse${X}       Launch Muse Code (Meta)\n"
+    printf "    ${MO}muse${X}       Launch Muse Code (Meta) (--yolo)\n"
     printf "    ${BW}opencode${X}   Launch opencode\n"
     printf "    ${BG}coffeeshot${X}     Toggle awake mode on/off\n"
     printf "    ${D}status${X}         Show awake mode status\n\n"

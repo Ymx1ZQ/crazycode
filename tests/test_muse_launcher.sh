@@ -39,12 +39,16 @@ has_re 'muse\)[[:space:]]+printf' "$CRAZYCODE" \
 have 'MO=' "$CRAZYCODE" \
   || fail "crazycode.sh must define MO color for muse"
 
-# crazycode.sh — resume subcommand override
+# crazycode.sh — launch_args --yolo for muse (and gemini)
+# Count --yolo occurrences in launch_args block (multiline)
+launch_yolo_count=$(awk '/local launch_args=\(/,/\)/ {print}' "$CRAZYCODE" | grep -c -- '--yolo')
+[[ "$launch_yolo_count" -ge 2 ]] \
+  || fail "crazycode.sh launch_args must contain --yolo for gemini and muse (found $launch_yolo_count)"
 has_re 'tool" == "muse"' "$CRAZYCODE" \
   || fail "crazycode.sh _launch_tool must handle muse in resume branch"
-have 'muse resume' "$CRAZYCODE" \
-  || have 'muse.*resume' "$CRAZYCODE" \
-  || fail "crazycode.sh must wire muse resume subcommand"
+have 'muse' "$CRAZYCODE" || fail "crazycode.sh must mention muse"
+has_re '\$\{launch_args\[.*\]\} resume' "$CRAZYCODE" \
+  || fail "crazycode.sh must wire muse resume as '\${launch_args} resume' (options before subcommand)"
 
 # crazycode.sh — help, completion, key range
 has_re 'muse.*Launch Muse' "$CRAZYCODE" \

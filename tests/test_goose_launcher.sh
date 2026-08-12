@@ -27,9 +27,9 @@ has_re 'goose\)[[:space:]]+printf' "$CRAZYCODE" \
   || fail "crazycode.sh get_color must have a 'goose)' case"
 
 # crazycode.sh — alphabetical order in items array (aider · claude ·
-# codex · forge · gemini · goose · opencode)
-has_re 'items=\("aider" "claude" "codex" "forge" "gemini" "goose" "opencode"\)' "$CRAZYCODE" \
-  || fail "crazycode.sh items array must be in alphabetical order with goose between gemini and opencode"
+# codex · forge · gemini · goose · muse · opencode)
+has_re 'items=\("aider" "claude" "codex" "forge" "gemini" "goose" "muse" "opencode"\)' "$CRAZYCODE" \
+  || fail "crazycode.sh items array must be in alphabetical order with goose between gemini and muse"
 
 # crazycode.sh — auto-approve env var wired into _launch_tool
 have 'GOOSE_MODE=auto' "$CRAZYCODE" \
@@ -46,10 +46,10 @@ has_re 'goose.*GOOSE_MODE=auto' "$CRAZYCODE" \
   || fail "crazycode.sh _print_help must mention goose + GOOSE_MODE=auto default"
 has_re 'compgen -W "[^"]*goose' "$CRAZYCODE" \
   || fail "crazycode.sh _crazycode_completions must include goose"
-has_re '\[1-7\]\)' "$CRAZYCODE" \
-  || fail "crazycode.sh numeric-key handler must cover [1-7]"
-has_re '↑↓/1-7' "$CRAZYCODE" \
-  || fail "crazycode.sh help line must say ↑↓/1-7"
+has_re '\[1-8\]\)' "$CRAZYCODE" \
+  || fail "crazycode.sh numeric-key handler must cover [1-8]"
+has_re '↑↓/1-8' "$CRAZYCODE" \
+  || fail "crazycode.sh help line must say ↑↓/1-8"
 
 # install.sh — goose install block with non-interactive configure
 has_re '_ask "goose"' "$INSTALL_SH" \
@@ -66,7 +66,7 @@ have '**goose**' "$README" \
   || fail "README.md must list **goose** in the tools table"
 have 'GOOSE_MODE=auto' "$README" \
   || fail "README.md must mention GOOSE_MODE=auto default"
-has_re '↑↓/1-7' "$README" \
-  || fail "README.md must update the key hint to ↑↓/1-7"
+has_re '↑↓/1-8' "$README" \
+  || fail "README.md must update the key hint to ↑↓/1-8"
 
 echo "PASS: M25 goose launcher wiring OK"

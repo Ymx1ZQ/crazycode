@@ -985,16 +985,16 @@ The reposition is not redundant, only aimed at the wrong row: `draw_awake` leave
 **Tool details:**
 - Binary: `muse`
 - Installer: `curl -fsSL https://dev.meta.ai/install.sh | bash` (same shape as `claude`'s `https://claude.ai/install.sh`; no sudo, no npm)
-- Auto-approve: no documented yolo flag in the beta docs/news (Meta docs/news only mention `muse` and `muse resume`, no `--yolo`/`--dangerously-skip-permissions`). Launch with no extra flag, matching `forge`'s stance; revisit if a future release adds a gated mode.
-- Resume: `muse resume` (documented by Meta as "allowing interrupted sessions to be resumed with the `muse resume` command" against the append-only local event log — same category as `codex resume`). Requires the subcommand-override branch in `_launch_tool` (like `codex`), not the generic `resume_args` append.
+- Auto-approve: `--yolo` (confirmed via `muse --help`: `Safety (approval and the sandbox are ON by default): --yolo Disable approval and sandboxing and trust this workspace for this run` — matches crazycode's "all tools launch without asking permission" footer). Alternative granular flags also exist (`--disable-approval`, `--disable-sandbox`, `--approval-mode never`), but `--yolo` is the single-flag equivalent used for the other YOLO tools.
+- Resume: `muse resume` (and `muse resume --last` / `<uuid>`; plain `muse resume` opens the picker — same category as `codex resume`). Usage is `muse [OPTIONS] <COMMAND>`, so YOLO must precede the subcommand: `muse --yolo resume`. Requires the subcommand-override branch in `_launch_tool`, but with options before the command (unlike `codex resume ${launch_args}`).
 - Vendor description: `Meta` (homogeneous with M18 vendor-only style)
 
 **Changes:**
 
 1. **`crazycode.sh`:**
-   - Insert `muse` into `items`, `cmds`, `descriptions` (`Meta`), `launch_args` (`""`), `resume_args` (`""` — the `resume` subcommand is handled in the `_launch_tool` override, per M28), `resume_hints` (`""`) at index 6 (between `goose` at 5 and `opencode` which moves from 6 → 7) to preserve alphabetical order.
+   - Insert `muse` into `items`, `cmds`, `descriptions` (`Meta`), `launch_args` (`--yolo`), `resume_args` (`""` — the `resume` subcommand is handled in the `_launch_tool` override, per M28), `resume_hints` (`""`) at index 6 (between `goose` at 5 and `opencode` which moves from 6 → 7) to preserve alphabetical order.
    - Add `MO='\033[38;5;208m'` (orange) and a `muse` case in `get_color()` — red/cyan/yellow/white/bold-blue/bold-magenta/bold-green are taken by the other seven.
-   - Extend `_launch_tool` resume override from `[[ "$tool" == "codex" ]]` to `[[ "$tool" == "codex" || "$tool" == "muse" ]]` → `muse resume ${launch_args[$idx]}`.
+   - Add `MO` orange and `muse` case in `get_color()`, then split `_launch_tool` resume override: `codex` stays `codex resume ${launch_args}`, `muse` uses `muse ${launch_args} resume` (options before subcommand, per `muse [OPTIONS] <COMMAND>`).
    - Add `muse` to `_print_help()` output (between `goose` and `opencode`).
    - Add `muse` to the `compgen -W` list in `_crazycode_completions()`.
    - `help_line` `↑↓/1-7` → `↑↓/1-8` and `case [1-7]` → `[1-8]`; `num_items` derives from `${#items[@]}` so layout rows recompute automatically.
@@ -1019,5 +1019,5 @@ The reposition is not redundant, only aimed at the wrong row: `draw_awake` leave
 
 ### Notes
 - `muse` orange (`MO`) is distinct from `codex` yellow and `forge` magenta while matching Meta's brand accent; any 256-color fallback degrades to the nearest orange on 8-color terminals.
-- `launch_args` for `muse` stays empty because the beta reports no gated permission mode to bypass (unlike `claude --dangerously-skip-permissions`, `codex --sandbox danger-full-access`, `gemini --yolo`, `goose GOOSE_MODE=auto`). If Meta later adds a `--yolo`/`--dangerously-skip-permissions` equivalent, add it to `launch_args[6]` and update the table/notes — no structural change needed.
-- `muse resume` is the only resume entry that uses the subcommand-override path alongside `codex`; `resume_args[6]` stays empty so the override is the single source of truth (matches M28 pattern where `resume_args` for subcommand tools is empty and the branch handles it).
+- `launch_args` for `muse` is `--yolo` (confirmed via `muse --help` 2026-08-12), matching the project's "all tools launch without asking permission" stance (same as `claude --dangerously-skip-permissions`, `codex --sandbox danger-full-access`, `gemini --yolo`).
+- `muse` now launches with `--yolo` (per `muse --help`: `Safety (approval and the sandbox are ON by default): --yolo Disable approval and sandboxing and trust this workspace`). Resume uses the subcommand-override path alongside `codex` but with options **before** the command (`muse --yolo resume`, per `Usage: muse [OPTIONS] <COMMAND>`) — `resume_args[6]` stays empty so the override is the single source of truth (matches M28 pattern where `resume_args` for subcommand tools is empty and the branch handles it). Previous Note claiming "no gated mode" superseded by `--help` output above.

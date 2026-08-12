@@ -39,9 +39,9 @@ has_re '^[[:space:]]*""[[:space:]]+# codex:' "$CRAZYCODE" \
 has_re '^[[:space:]]*"session --resume"[[:space:]]+# goose:' "$CRAZYCODE" \
   || fail "resume_args goose entry must stay 'session --resume' (goose has no picker)"
 
-# forge, gemini and opencode choose the session inside their own TUI: any flag
+# forge, gemini, muse and opencode choose the session inside their own TUI: any flag
 # here would resume the most recent one instead of showing the list.
-for tool in forge gemini opencode; do
+for tool in forge gemini muse opencode; do
   has_re "^[[:space:]]*\"\"[[:space:]]+# ${tool}:" "$CRAZYCODE" \
     || fail "resume_args ${tool} entry must be empty — ${tool} picks the session in-app"
 done
@@ -49,7 +49,7 @@ done
 # ── parallel arrays stay one entry per tool ──────────────────────────────
 items_line=$(grep -E '^[[:space:]]*local items=\(' "$CRAZYCODE")
 n_items=$(grep -oE '"[^"]*"' <<<"$items_line" | wc -l)
-[[ "$n_items" -eq 7 ]] || fail "expected 7 tools in items, found $n_items"
+[[ "$n_items" -eq 8 ]] || fail "expected 8 tools in items, found $n_items"
 for arr in launch_args resume_args resume_hints; do
   n=$(array_body "$arr" | wc -l)
   [[ "$n" -eq "$n_items" ]] || fail "$arr must have one entry per tool ($n_items), found $n"
@@ -65,9 +65,11 @@ have 'inside gemini to browse saved conversations' "$CRAZYCODE" \
 have 'ctrl+x then l inside opencode' "$CRAZYCODE" \
   || fail "opencode hint must name the ctrl+x then l keybind"
 
-# ── codex branch: picker restored, no-approval flags restored ────────────
+# ── codex and muse branches: picker restored, no-approval flags restored ──
 have 'resume ${launch_args[$idx]}' "$CRAZYCODE" \
   || fail "codex resume must pass launch_args so it keeps the no-approval flags"
+has_re '\$\{launch_args\[.*\]\} resume' "$CRAZYCODE" \
+  || fail "muse resume must pass launch_args before subcommand (muse --yolo resume)"
 lacks 'resume --last' "$CRAZYCODE" \
   || fail "codex resume must not pass --last — it skips the session picker"
 
