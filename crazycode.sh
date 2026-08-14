@@ -201,7 +201,7 @@ _crazycode_main() {
 
     # Per-tool environment overrides applied immediately before invocation.
     # forge: telemetry defaults to ON and processes events on US infrastructure
-    # (Tailcall DPA in preparation, May 2026). Opt-out by default; users who
+    # with no data-processing agreement in place. Opt-out by default; users who
     # want telemetry on can `unset FORGE_TRACKER` in their shell after launch.
     # goose: GOOSE_MODE defaults to smart_approve (interactive confirmations).
     # Override to `auto` to match crazycode's "all tools launch without asking

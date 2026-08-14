@@ -1021,3 +1021,17 @@ The reposition is not redundant, only aimed at the wrong row: `draw_awake` leave
 - `muse` orange (`MO`) is distinct from `codex` yellow and `forge` magenta while matching Meta's brand accent; any 256-color fallback degrades to the nearest orange on 8-color terminals.
 - `launch_args` for `muse` is `--yolo` (confirmed via `muse --help` 2026-08-12), matching the project's "all tools launch without asking permission" stance (same as `claude --dangerously-skip-permissions`, `codex --sandbox danger-full-access`, `gemini --yolo`).
 - `muse` now launches with `--yolo` (per `muse --help`: `Safety (approval and the sandbox are ON by default): --yolo Disable approval and sandboxing and trust this workspace`). Resume uses the subcommand-override path alongside `codex` but with options **before** the command (`muse --yolo resume`, per `Usage: muse [OPTIONS] <COMMAND>`) — `resume_args[6]` stays empty so the override is the single source of truth (matches M28 pattern where `resume_args` for subcommand tools is empty and the branch handles it). Previous Note claiming "no gated mode" superseded by `--help` output above.
+
+---
+
+## M32: Drop the point-in-time DPA note from the forge telemetry comment ✅
+
+**Why:** The `_launch_tool` comment justifying `FORGE_TRACKER=0` cites a snapshot fact ("Tailcall DPA in preparation, May 2026") that rots as soon as the DPA status changes — exactly the class of content the comment convention routes to the commit body, not the comment.
+
+**Approach:**
+- Rewrite the comment in `crazycode.sh` to state the invariant (telemetry defaults ON, no DPA in place, opt-out by default) without the transient date.
+- Verify `bash -n crazycode.sh` and the existing test suite stay green.
+
+**Tasks:**
+- [x] Rewrite the forge/goose per-tool comment block in `crazycode.sh`'s `_launch_tool`
+- [x] Verify `bash -n` and the full test suite pass
