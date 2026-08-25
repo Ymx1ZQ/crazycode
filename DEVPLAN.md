@@ -20,3 +20,23 @@ Archived: M1-M32 -> `DEVPLAN-ARCHIVE.md` (one line per milestone; the sha is the
 **Done when:** `DEVPLAN.md` contains only this milestone; `DEVPLAN-ARCHIVE.md` contains 32 verified lines; the ID-set diff is empty; all 11 test scripts pass.
 
 **Execution notes:** 32/32 milestones archived, all shas verified (0 without a findable commit). The remote history was force-rewritten a second time mid-task (an additional name redaction on M24's text, cascading new shas M24-M32) — caught before pushing, local branch reset to the new `origin/main`, all M24-M32 shas re-derived and re-verified against it (M1-M23 unaffected, same shas). ID-set diff before/after: empty (M33 is the only new ID). `tests/*.sh`: 11/11 pass, exit 0 each.
+
+## M34: Share one OpenCode backend per user ✅
+
+**Why:** Each direct OpenCode launch owns another backend and another full MCP process set, so concurrent terminals duplicate persistent memory and swap while exposing the same tools.
+
+**Approach:** Route OpenCode launches through one authenticated `opencode serve` bound to loopback and managed by a user systemd service in `app.slice`; each terminal uses `opencode attach --dir` with its own working directory and existing resume arguments. Provision the unit and a private generated credential automatically from the installed checkout, without printing or passing the credential on the command line. Keep current processes untouched: this milestone changes source and tests only, with live rollout deferred for review.
+
+**UX:** OpenCode still launches from option 8 or `crazycode opencode`; startup failures explain how to inspect the user service without exposing internal credentials.
+
+**Tasks:**
+- [x] Test: integration — prove two launches attach to one authenticated loopback service while preserving directory and arguments.
+- [x] Test: security — prove credential creation is private, silent, validated, and absent from process arguments.
+- [x] Implement automatic user-unit provisioning, readiness handling, attach dispatch, and actionable failures.
+- [x] Preserve OpenCode resume behavior and direct argument forwarding.
+- [x] Update README with shared-backend behavior, lifecycle, security, and review-only rollout status.
+- [x] Run all repository test scripts and verify no existing launcher behavior regresses.
+
+**Done when:** Hermetic tests show concurrent OpenCode launches target one authenticated loopback backend with distinct directories, all repository tests pass, and no live service or active process was changed.
+
+**Execution notes:** Added an on-demand, authenticated loopback user service and routed fresh/resume launches through `opencode attach --dir`. Provisioning and singleton start are serialized; credential/PATH updates are atomic, preserve a valid active password, and never restart a running backend. Readiness uses authenticated curl config on stdin and a 45-second monotonic deadline, continuing through `active`/`activating` and failing explicitly on `failed`. The hermetic parallel-launch test passes, all 13 repository test scripts pass (the real-server test skips unless opted in), the isolated `opencode serve --pure` 401/200 smoke passes when enabled, systemd unit verification exits 0, and no live user unit was installed, started, or restarted.

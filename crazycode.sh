@@ -12,6 +12,13 @@ _crazycode_main() {
   local BW='\033[1;37m'  # bold white
   local MO='\033[38;5;208m'  # orange for Muse
 
+  local _crazycode_source_dir
+  _crazycode_source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local _opencode_service="crazycode-opencode.service"
+  local _opencode_url="http://127.0.0.1:4096"
+  local _opencode_password=""
+  local _opencode_runtime_path=""
+
   local items=("aider" "claude" "codex" "forge" "gemini" "goose" "muse" "opencode")
   local cmds=("aider" "claude" "codex" "forge" "gemini" "goose" "muse" "opencode")
   local descriptions=("Paul Gauthier" "Anthropic" "OpenAI" "Tailcall" "Google" "AAIF" "Meta" "SST")
@@ -159,6 +166,235 @@ _crazycode_main() {
     esac
   }
 
+  _opencode_backend_error() {
+    printf "\n  %bOpenCode backend could not %s.%b\n" \
+      "${BR}${B}✗${X}  ${BW}" "$1" "$X" >&2
+    printf "  %bInspect it with: systemctl --user status %s%b\n\n" \
+      "$D" "$_opencode_service" "$X" >&2
+  }
+
+  _capture_opencode_runtime_path() {
+    local -a path_parts=()
+    local part candidate="" existing
+    IFS=':' read -r -a path_parts <<< "$PATH"
+    for part in "${path_parts[@]}"; do
+      [[ -n "$part" && "$part" =~ ^[A-Za-z0-9_./+@%=-]+$ ]] || continue
+      existing=0
+      case ":$candidate:" in
+        *":$part:"*) existing=1 ;;
+      esac
+      [[ $existing -eq 1 ]] && continue
+      candidate+="${candidate:+:}$part"
+    done
+    [[ -n "$candidate" ]] || return 1
+    _opencode_runtime_path="$candidate"
+  }
+
+  _opencode_service_state() {
+    systemctl --user show --property=ActiveState --value \
+      "$_opencode_service" 2>/dev/null
+  }
+
+  _prepare_opencode_backend() {
+    local config_dir="$HOME/.config/crazycode"
+    local systemd_dir="$HOME/.config/systemd/user"
+    local env_file="$config_dir/opencode.env"
+    local lock_file="$config_dir/setup.lock"
+    local unit_file="$systemd_dir/$_opencode_service"
+    local unit_template="$_crazycode_source_dir/systemd/$_opencode_service"
+
+    if [[ ! -f "$unit_template" ]]; then
+      _opencode_backend_error "find its service template"
+      return 1
+    fi
+    if ! command -v flock >/dev/null 2>&1; then
+      _opencode_backend_error "acquire its setup lock (flock is missing)"
+      return 1
+    fi
+    if ! _capture_opencode_runtime_path; then
+      _opencode_backend_error "capture a safe executable search path"
+      return 1
+    fi
+
+    install -d -m 700 "$config_dir" || {
+      _opencode_backend_error "create its private configuration directory"
+      return 1
+    }
+    install -d -m 700 "$systemd_dir" || {
+      _opencode_backend_error "create the user service directory"
+      return 1
+    }
+    (umask 077; : >> "$lock_file") || {
+      _opencode_backend_error "create its setup lock"
+      return 1
+    }
+    chmod 600 "$lock_file" || return 1
+
+    if ! (
+      flock -x 9
+
+      if [[ -L "$env_file" || -L "$unit_file" ]]; then
+        exit 1
+      fi
+
+      if ! cmp -s "$unit_template" "$unit_file"; then
+        install -m 644 "$unit_template" "$unit_file" || exit 1
+        systemctl --user daemon-reload >/dev/null 2>&1 || exit 1
+      fi
+
+      local -a secret_lines=()
+      local password="" state="" tmp_file=""
+      local password_valid=0 file_current=0
+      if [[ -f "$env_file" ]]; then
+        mapfile -t secret_lines < "$env_file"
+        if [[ ${#secret_lines[@]} -ge 1 \
+              && "${secret_lines[0]}" =~ ^OPENCODE_SERVER_PASSWORD=[0-9a-f]{64}$ ]]; then
+          password="${secret_lines[0]#*=}"
+          password_valid=1
+        fi
+        if [[ ${#secret_lines[@]} -eq 2 \
+              && $password_valid -eq 1 \
+              && "${secret_lines[1]}" == "PATH=$_opencode_runtime_path" \
+              && "$(stat -c '%a' "$env_file")" == "600" \
+              && "$(stat -c '%u' "$env_file")" == "$(id -u)" ]]; then
+          file_current=1
+        fi
+      fi
+
+      if [[ $file_current -eq 0 ]]; then
+        if [[ $password_valid -eq 0 ]]; then
+          state="$(_opencode_service_state)" || exit 1
+          case "$state" in
+            active|activating) exit 1 ;;
+          esac
+          password="$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')"
+          [[ "$password" =~ ^[0-9a-f]{64}$ ]] || exit 1
+        fi
+
+        tmp_file="$(mktemp "$config_dir/.opencode.env.XXXXXX")" || exit 1
+        trap '[[ -z "$tmp_file" ]] || rm -f -- "$tmp_file"' EXIT
+        printf 'OPENCODE_SERVER_PASSWORD=%s\nPATH=%s\n' \
+          "$password" "$_opencode_runtime_path" > "$tmp_file"
+        chmod 600 "$tmp_file" || exit 1
+        mv -f -- "$tmp_file" "$env_file" || exit 1
+        tmp_file=""
+      fi
+
+    ) 9>> "$lock_file"; then
+      _opencode_backend_error "provision its private credential and user service"
+      return 1
+    fi
+  }
+
+  _read_opencode_password() {
+    local env_file="$HOME/.config/crazycode/opencode.env"
+    local -a secret_lines=()
+    [[ -f "$env_file" && ! -L "$env_file" ]] || return 1
+    mapfile -t secret_lines < "$env_file"
+    [[ ${#secret_lines[@]} -eq 2 \
+       && "${secret_lines[0]}" =~ ^OPENCODE_SERVER_PASSWORD=[0-9a-f]{64}$ \
+       && "${secret_lines[1]}" =~ ^PATH=[A-Za-z0-9_./:+@%=-]+$ \
+       && "$(stat -c '%a' "$env_file")" == "600" \
+       && "$(stat -c '%u' "$env_file")" == "$(id -u)" ]] || return 1
+    _opencode_password="${secret_lines[0]#*=}"
+  }
+
+  _monotonic_millis() {
+    local uptime whole fraction
+    IFS=' ' read -r uptime _ < /proc/uptime || return 1
+    [[ "$uptime" =~ ^[0-9]+\.[0-9]+$ ]] || return 1
+    whole="${uptime%%.*}"
+    fraction="${uptime#*.}000"
+    fraction="${fraction:0:3}"
+    printf '%s\n' "$((10#$whole * 1000 + 10#$fraction))"
+  }
+
+  _ensure_opencode_backend() {
+    local config_dir="$HOME/.config/crazycode"
+    local lock_file="$config_dir/setup.lock"
+    local timeout_seconds="${CRAZYCODE_OPENCODE_READY_TIMEOUT_SECONDS:-45}"
+    local started_at deadline now state start_status
+
+    [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || timeout_seconds=45
+    started_at="$(_monotonic_millis)" || {
+      _opencode_backend_error "read the monotonic readiness clock"
+      return 1
+    }
+    deadline=$((started_at + timeout_seconds * 1000))
+
+    (
+      flock -x 9
+      state="$(_opencode_service_state)" || exit 3
+      case "$state" in
+        active|activating) exit 0 ;;
+        failed) exit 2 ;;
+        *) systemctl --user start "$_opencode_service" >/dev/null 2>&1 || exit 1 ;;
+      esac
+    ) 9>> "$lock_file"
+    start_status=$?
+    case "$start_status" in
+      0) ;;
+      2)
+        _opencode_backend_error "recover from its failed state"
+        return 1
+        ;;
+      *)
+        _opencode_backend_error "start"
+        return 1
+        ;;
+    esac
+
+    while true; do
+      state="$(_opencode_service_state)" || state="unknown"
+      case "$state" in
+        active|activating) ;;
+        failed)
+          _opencode_backend_error "recover from its failed state"
+          return 1
+          ;;
+        *)
+          _opencode_backend_error "remain active while becoming ready"
+          return 1
+          ;;
+      esac
+
+      if printf 'user = "opencode:%s"\n' "$_opencode_password" \
+          | curl --config - --silent --fail --output /dev/null --max-time 1 \
+              "$_opencode_url/global/health"; then
+        return 0
+      fi
+
+      now="$(_monotonic_millis)" || break
+      (( now >= deadline )) && break
+      sleep 0.1
+    done
+
+    _opencode_backend_error "become ready"
+    return 1
+  }
+
+  _launch_shared_opencode() {
+    _prepare_opencode_backend || return 1
+    if ! _read_opencode_password; then
+      _opencode_backend_error "read its private credential"
+      return 1
+    fi
+    if ! _ensure_opencode_backend; then
+      _opencode_password=""
+      return 1
+    fi
+
+    local status
+    if OPENCODE_SERVER_PASSWORD="$_opencode_password" \
+        opencode attach "$_opencode_url" --dir "$PWD" "$@"; then
+      status=0
+    else
+      status=$?
+    fi
+    _opencode_password=""
+    return "$status"
+  }
+
   awake_count() {
     _awake_count=0
     [[ $sleep_masked -eq 1 ]] && ((_awake_count++))
@@ -222,7 +458,9 @@ _crazycode_main() {
       # codex reaches its picker through a subcommand; `--last` would skip the
       # picker, and the launch_args carry the no-approval flags that a resumed
       # session needs just as much as a fresh one.
-      if [[ "$tool" == "codex" ]]; then
+      if [[ "$tool" == "opencode" ]]; then
+        _launch_shared_opencode "$@"
+      elif [[ "$tool" == "codex" ]]; then
         # shellcheck disable=SC2086
         env $env_prefix ${cmd} resume ${launch_args[$idx]} "$@"
       elif [[ "$tool" == "muse" ]]; then
@@ -234,8 +472,12 @@ _crazycode_main() {
       fi
     else
       printf "\n  ${color}${B}Launching ${tool}...${X}\n\n"
-      # shellcheck disable=SC2086
-      env $env_prefix ${cmd} ${launch_args[$idx]} "$@"
+      if [[ "$tool" == "opencode" ]]; then
+        _launch_shared_opencode "$@"
+      else
+        # shellcheck disable=SC2086
+        env $env_prefix ${cmd} ${launch_args[$idx]} "$@"
+      fi
     fi
   }
 
@@ -267,7 +509,7 @@ _crazycode_main() {
     printf "    ${BB}gemini${X}     Launch Gemini CLI (--yolo)\n"
     printf "    ${BG}goose${X}      Launch Goose (GOOSE_MODE=auto set by default)\n"
     printf "    ${MO}muse${X}       Launch Muse Code (Meta) (--yolo)\n"
-    printf "    ${BW}opencode${X}   Launch opencode\n"
+    printf "    ${BW}opencode${X}   Attach to shared OpenCode backend\n"
     printf "    ${BG}coffeeshot${X}     Toggle awake mode on/off\n"
     printf "    ${D}status${X}         Show awake mode status\n\n"
     printf "  ${D}Run without arguments to open the interactive TUI.${X}\n\n"

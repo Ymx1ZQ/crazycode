@@ -54,7 +54,7 @@ Flags: `--all` (install everything, no prompts), `--silent` (errors only).
 | **gemini** | Opens [Gemini CLI](https://github.com/google-gemini/gemini-cli) — Google's AI coding CLI (`--yolo`) |
 | **goose** | Opens [Goose](https://github.com/aaif-goose/goose) — AAIF's open-source AI agent (`GOOSE_MODE=auto` set by default — fully autonomous tool execution) |
 | **muse** | Opens [Muse Code](https://developer.meta.com/ai/products/muse-code/) — Meta's AI coding CLI powered by Muse Spark (`--yolo` disables approval/sandbox — `muse resume` to resume) |
-| **opencode** | Opens [opencode](https://github.com/sst/opencode) — AI coding tool by SST |
+| **opencode** | Attaches to one shared [opencode](https://github.com/sst/opencode) backend per user, preserving the current directory and session controls |
 | **coffeeshot** `[c]` | Awake mode — keeps the PC fully alive: masks sleep/suspend/hibernate, holds a `systemd-inhibit` idle inhibitor, ignores lid switch, disables screen lock |
 | **camomile** `[c]` | Restores normal power management (toggle coffeeshot off) |
 
@@ -75,6 +75,40 @@ crazycode --help         # show all commands
 
 Tab completion is built-in — just press `Tab` after `crazycode `.
 
+## Shared OpenCode backend
+
+The first `crazycode opencode` launch provisions `crazycode-opencode.service`
+under your user systemd manager and starts it on demand. Later terminals attach
+to that same backend instead of starting another OpenCode process and another
+copy of every configured MCP server. Each attach still receives its own working
+directory; OpenCode's `--continue`, `--session`, and in-app session picker keep
+working normally.
+
+The service listens only on `127.0.0.1:4096`, runs as a separate unit in
+`app.slice`, and authenticates clients with an automatically generated local
+password. The password is stored in `~/.config/crazycode/opencode.env` with mode
+`600`, is passed through the environment, and is never printed or added to a
+process command line. The same private file captures the launcher's executable
+search path so Node-, npm-, and uv-based MCP servers remain available under
+systemd.
+
+The service is not enabled at login. It starts on the first OpenCode launch and
+can be inspected or stopped explicitly:
+
+```bash
+systemctl --user status crazycode-opencode.service
+systemctl --user stop crazycode-opencode.service
+```
+
+Installing an update changes source only; it does not restart existing OpenCode
+processes or roll out the shared backend. Provisioning happens only when
+`crazycode opencode` is subsequently invoked. If a shared backend is already
+running, crazycode may atomically refresh the installed unit and captured PATH,
+but the running process keeps its current definition and environment. A
+refreshed unit or captured PATH takes effect only after the shared backend is
+explicitly stopped or restarted. No install or later launch implicitly restarts
+a running backend.
+
 ## Manual install
 
 ```bash
@@ -90,5 +124,6 @@ If you've already cloned the repo, run `./install.sh` directly — it detects th
 ## Requirements
 
 - bash 4+
+- `curl` and `flock` (used for shared OpenCode readiness and race-free setup)
 - Linux (systemd) — awake mode requires `sudo` for `systemctl mask/unmask` and `logind.conf`
 - The AI tools themselves — each needs its own install (the installer walks you through them)

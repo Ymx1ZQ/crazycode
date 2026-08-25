@@ -1,0 +1,14 @@
+[Unit]
+Description=crazycode shared OpenCode backend
+
+[Service]
+Type=simple
+Environment=PATH=%h/.opencode/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=%h/.config/crazycode/opencode.env
+ExecStart=/usr/bin/env opencode serve --hostname 127.0.0.1 --port 4096
+Restart=on-failure
+RestartSec=2
+Slice=app.slice
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
