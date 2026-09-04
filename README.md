@@ -55,8 +55,8 @@ Flags: `--all` (install everything, no prompts), `--silent` (errors only).
 | **goose** | Opens [Goose](https://github.com/aaif-goose/goose) — AAIF's open-source AI agent (`GOOSE_MODE=auto` set by default — fully autonomous tool execution) |
 | **muse** | Opens [Muse Code](https://developer.meta.com/ai/products/muse-code/) — Meta's AI coding CLI powered by Muse Spark (`--yolo` disables approval/sandbox — `muse resume` to resume) |
 | **opencode** | Attaches to one shared [opencode](https://github.com/sst/opencode) backend per user, preserving the current directory and session controls |
-| **coffeeshot** `[c]` | Awake mode — keeps the PC fully alive: masks sleep/suspend/hibernate, holds a `systemd-inhibit` idle inhibitor, ignores lid switch, disables screen lock |
-| **camomile** `[c]` | Restores normal power management (toggle coffeeshot off) |
+| **coffeeshot** `[c]` | Awake mode — keeps the PC fully alive: masks sleep/suspend/hibernate, holds a `systemd-inhibit` idle inhibitor, ignores lid switch, disables screen lock. Snapshots the previous state to `~/.crazycode/awake.pre` first |
+| **camomile** `[c]` | Restores the state saved when coffeeshot was enabled — not fixed defaults, so settings configured outside crazycode survive. With no snapshot it only drops the inhibitor and leaves lid/lock/idle alone |
 
 All AI tools launch **without asking permission** — full auto-approve mode.
 

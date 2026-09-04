@@ -40,3 +40,30 @@ Archived: M1-M32 -> `DEVPLAN-ARCHIVE.md` (one line per milestone; the sha is the
 **Done when:** Hermetic tests show concurrent OpenCode launches target one authenticated loopback backend with distinct directories, all repository tests pass, and no live service or active process was changed.
 
 **Execution notes:** Added an on-demand, authenticated loopback user service and routed fresh/resume launches through `opencode attach --dir`. Provisioning and singleton start are serialized; credential/PATH updates are atomic, preserve a valid active password, and never restart a running backend. Readiness uses authenticated curl config on stdin and a 45-second monotonic deadline, continuing through `active`/`activating` and failing explicitly on `failed`. The hermetic parallel-launch test passes, all 13 repository test scripts pass (the real-server test skips unless opted in), the isolated `opencode serve --pure` 401/200 smoke passes when enabled, systemd unit verification exits 0, and no live user unit was installed, started, or restarted.
+
+## M35: Restore the pre-existing power state instead of hardcoded defaults ✅
+
+**Why:** `disable_awake` restores lid, lock and idle to hardcoded values (`suspend`, `true`, `300`) rather than to whatever they were before awake mode was turned on. When those settings were deliberately configured outside crazycode — because the machine is a streaming host or an SSH server — camomile silently destroys that configuration, and the damage only surfaces later, when the closed laptop suspends or the remote desktop shows a lock screen instead of the desktop.
+
+**Approach:** In `enable_awake`, before mutating anything, snapshot the current value of each of the four conditions to `~/.crazycode/awake.pre` (written only when absent, so a repeated enable never overwrites a snapshot with already-awake values). In `disable_awake`, restore from that snapshot instead of the fixed defaults, then delete it. When the snapshot is missing — awake enabled by an older version, or state changed externally — do not touch lid, lock or idle at all: only drop the inhibitor, and leave a message. Never unmask sleep targets that were already masked before enabling.
+
+**UX:** Unchanged. Camomile prints one extra line when it skips restoring because no snapshot exists.
+
+**Tasks:**
+- [x] Test: enable→disable restores the exact pre-existing values, not the defaults
+- [x] Test: disable without a snapshot leaves lid/lock/idle untouched
+- [x] Test: repeated enable does not overwrite an existing snapshot
+- [x] Implement snapshot in `enable_awake` and restore in `disable_awake`
+- [x] Update README (coffeeshot/camomile table)
+- [x] Run `tests/*.sh`
+
+**Done when:** On a machine where lid/lock/idle were configured outside crazycode, a coffeeshot→camomile cycle leaves them unchanged; a camomile with no snapshot changes nothing but the inhibitor; all test scripts pass.
+
+**Execution notes:** `enable_awake` writes `~/.crazycode/awake.pre` (mode 600) before the first
+mutation and only when absent, so a repeated enable never captures already-awake values.
+`disable_awake` sources it, restores lid / idle-delay / lock-enabled / KDE Autolock to the saved
+values, deletes the file, and skips the unmask when `sleep_was_masked=1` — targets masked before
+enabling stay masked. With no snapshot it drops only the inhibitor and prints one line. Note for
+existing installs: a session already awake has no snapshot, so the first camomile after this
+change is a no-op on lid/lock/idle by design. New test `tests/test_awake_snapshot.sh` (7 checks);
+14/14 test scripts pass.

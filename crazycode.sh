@@ -107,6 +107,30 @@ _crazycode_main() {
   }
 
   enable_awake() {
+    local snap="$HOME/.crazycode/awake.pre"
+    # Snapshot what the machine looked like BEFORE we touch anything, so camomile
+    # can put back exactly that instead of hardcoded defaults. Written only when
+    # absent: a second enable must not overwrite it with already-awake values.
+    if [[ ! -f "$snap" ]]; then
+      mkdir -p "$(dirname "$snap")" 2>/dev/null
+      {
+        if systemctl is-enabled sleep.target 2>/dev/null | grep -q masked; then
+          printf 'sleep_was_masked=1\n'
+        else
+          printf 'sleep_was_masked=0\n'
+        fi
+        printf 'pre_lid=%s\n' "$(grep -i '^HandleLidSwitch=' /etc/systemd/logind.conf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '[:space:]')"
+        if command -v gsettings &>/dev/null && [ -n "$DISPLAY$WAYLAND_DISPLAY" ]; then
+          printf 'pre_idle=%s\n' "$(gsettings get org.gnome.desktop.session idle-delay 2>/dev/null | awk '{print $NF}')"
+          printf 'pre_lock=%s\n' "$(gsettings get org.gnome.desktop.screensaver lock-enabled 2>/dev/null)"
+        fi
+        if command -v kreadconfig5 &>/dev/null; then
+          printf 'pre_kde_autolock=%s\n' "$(kreadconfig5 --group Daemon --key Autolock 2>/dev/null)"
+        fi
+      } > "$snap" 2>/dev/null
+      chmod 600 "$snap" 2>/dev/null
+    fi
+
     sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1
 
     if ! systemd-inhibit --list --no-pager 2>/dev/null | grep -q crazycode-awake; then
@@ -133,21 +157,46 @@ _crazycode_main() {
   }
 
   disable_awake() {
-    sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1
+    local snap="$HOME/.crazycode/awake.pre"
+
+    # The inhibitor is ours in every case: always drop it.
     pkill -f 'systemd-inhibit.*crazycode-awake' 2>/dev/null
     pkill -f caffeine-indicator 2>/dev/null
 
-    sudo sed -i 's/^#\?HandleLidSwitch=.*/HandleLidSwitch=suspend/' /etc/systemd/logind.conf 2>/dev/null
+    if [[ ! -f "$snap" ]]; then
+      # No snapshot: awake mode was enabled by an older version, or the state was
+      # configured outside crazycode. Writing defaults here would destroy settings
+      # we never saw, so skip lid, lock and idle entirely and say so.
+      printf "  ${BY}no snapshot — lid, lock and idle left untouched${X}\n"
+      check_awake
+      return 0
+    fi
+
+    local sleep_was_masked=0 pre_lid="" pre_idle="" pre_lock="" pre_kde_autolock=""
+    # shellcheck disable=SC1090
+    . "$snap" 2>/dev/null
+
+    # Only unmask what we masked: targets already masked before enabling stay masked.
+    if [[ "$sleep_was_masked" != "1" ]]; then
+      sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1
+    fi
+
+    if [[ -n "$pre_lid" ]]; then
+      sudo sed -i "s/^#\\?HandleLidSwitch=.*/HandleLidSwitch=$pre_lid/" /etc/systemd/logind.conf 2>/dev/null
+    else
+      sudo sed -i '/^HandleLidSwitch=/d' /etc/systemd/logind.conf 2>/dev/null
+    fi
     sudo systemctl kill -s HUP systemd-logind 2>/dev/null
 
     if command -v gsettings &>/dev/null && [ -n "$DISPLAY$WAYLAND_DISPLAY" ]; then
-      gsettings set org.gnome.desktop.session idle-delay 300 2>/dev/null
-      gsettings set org.gnome.desktop.screensaver lock-enabled true 2>/dev/null
+      [[ -n "$pre_idle" ]] && gsettings set org.gnome.desktop.session idle-delay "$pre_idle" 2>/dev/null
+      [[ -n "$pre_lock" ]] && gsettings set org.gnome.desktop.screensaver lock-enabled "$pre_lock" 2>/dev/null
     fi
-    if command -v kwriteconfig5 &>/dev/null; then
-      kwriteconfig5 --group Daemon --key Autolock true 2>/dev/null
+    if command -v kwriteconfig5 &>/dev/null && [[ -n "$pre_kde_autolock" ]]; then
+      kwriteconfig5 --group Daemon --key Autolock "$pre_kde_autolock" 2>/dev/null
     fi
 
+    rm -f "$snap" 2>/dev/null
     check_awake
   }
 
